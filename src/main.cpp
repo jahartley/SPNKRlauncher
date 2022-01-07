@@ -6,18 +6,21 @@
 //Define Settings
 #define DebugSerial SerialUSB   //Pick which serial port to use for debug messages
 #define DebugStepper            //turn on debug stepper functions, comment out to turn off
+#define WaitForUsbSerial        //Wait for Debug Serial connection on startup, comment to turn off
 
-#define TriggerPin
-#define ReloadPin
-#define IndexPin
-#define AnimationPin
-#define StepPin
-#define DirectionPin
+//Pin Definitions for hookups
+#define LEDPin PC13
+#define TriggerPin PB6
+#define ReloadPin PB7
+#define IndexPin PB8
+#define AnimationPin PB9
+#define StepPin PB12
+#define DirectionPin PB13
 
 #ifdef DebugStepper
-  #define DebugStepPin
-  #define DebugDirectionPin
-  #define DebugMesureStepsBetweenIndexPin
+  #define DebugStepPin PB3
+  #define DebugDirectionPin PB15
+  #define DebugMeasureStepsBetweenIndexPin PB4
 #endif
 
 //Stepper Constants
@@ -32,27 +35,59 @@
 #include <Arduino.h>            //Add arduino functions
 #include <FlexyStepper.h>       //Add Stepper Library
 
+
+FlexyStepper stepper;           //Create stepper object
+
+
 void IndexRoutine();
 void FireRoutine();
 void AnimationRoutine();
+#ifdef DebugStepper
+  void MeasureStepsBetweenIndexPin();
+#endif
 
 
 void setup() {  // put your setup code here, to run once:
+  DebugSerial.begin(); //activate USB CDC driver
+  #ifdef WaitForUsbSerial
+    while(!DebugSerial); //blocks till usb serial is connected... turn off if not connected to PC.
+  #endif
+  DebugSerial.println("SPNKR Launcher starting");
+  DebugSerial.print("Setup input pins...");
+  pinMode(TriggerPin,INPUT_PULLUP);
+  pinMode(ReloadPin, INPUT_PULLUP);
+  pinMode(IndexPin, INPUT_PULLUP);
+  pinMode(AnimationPin, INPUT_PULLUP);
+  #ifdef DebugStepper
+    pinMode(DebugStepPin, INPUT_PULLUP);
+    pinMode(DebugDirectionPin, INPUT_PULLUP);
+    pinMode(DebugMeasureStepsBetweenIndexPin, INPUT_PULLUP);
+  #endif
+  DebugSerial.println(" complete.");
 
+  DebugSerial.print("Setup stepper library... ");
+  stepper.connectToPins(StepPin, DirectionPin);
+  DebugSerial.println(" complete.");
 }
 
 void loop() {  // put your main code here, to run repeatedly:
+  //code for button inputs to call routines...
+}
+
+void IndexRoutine(){ //routine to index drum
 
 }
 
-void IndexRoutine(){
+void FireRoutine(){ //routine to switch barrels after firing
 
 }
 
-void FireRoutine(){
-
-}
-
-void AnimationRoutine(){
+void AnimationRoutine(){ //routine to perform animation
   
 }
+
+#ifdef DebugStepper
+void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index hits via serial output
+
+}
+#endif
