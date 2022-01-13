@@ -39,7 +39,7 @@
 //buttons
 ButtonKing trigger(TriggerPin, true, true);
 ButtonKing reload(ReloadPin, true, true);
-ButtonKing index(IndexPin, true, true);
+//ButtonKing index(IndexPin, true, true);
 ButtonKing animation(AnimationPin, true, true);
 #ifdef DebugStepper
   ButtonKing debugMeasure(DebugMeasureStepsBetweenIndexPin, true,true);
@@ -80,7 +80,7 @@ void setup() {  // put your setup code here, to run once:
   trigger.setRelease(FireRoutine);
   animation.setRelease(AnimationRoutine);
   reload.setPress(IndexRoutine);
-  reload.setRelease();
+  reload.setRelease(StopMotion);
   #ifdef DebugStepper
     debugMeasure.setRelease(MeasureStepsBetweenIndexPin);
   #endif
