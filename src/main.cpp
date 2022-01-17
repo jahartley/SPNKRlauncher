@@ -19,18 +19,20 @@
 
 #ifdef DebugStepper
   #define DebugStepPin PB3
-  #define DebugDirectionPin PB15
+  #define DebugFireCircuit PB15
   #define DebugMeasureStepsBetweenIndexPin PB4
 #endif
 
 //Stepper Constants
-#define MaxAccel 10
-#define MaxDecel 10
+#define MaxAccel 100
 #define MaxDrumRpm 50
 #define DrumTeeth 400
 #define StepperTeeth 12
 #define MicroStepping 2
 #define Reverse false
+#define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)
+#define MaxStepsPerSecond (MaxDrumRpm/60)*StepsPerRotation
+
 
 #include <Arduino.h>            //Add arduino functions
 #include <FlexyStepper.h>       //Add Stepper Library
@@ -50,8 +52,16 @@ FlexyStepper stepper;           //Create stepper object
 
 //variables
 bool stopMotion = false;
+bool inMotion = false;
+int buttonRoundRobin = 0;
+#ifdef DebugStepper
+  int buttonCount = 4;
+#else
+  int buttonCount = 3;
+#endif
 
 void buttonCheck();
+void buttonCheckRR();
 void IndexRoutine();
 void FireRoutine();
 void AnimationRoutine();
@@ -68,26 +78,22 @@ void setup() {  // put your setup code here, to run once:
   #endif
   DebugSerial.println("SPNKR Launcher starting");
   DebugSerial.print("Setup input pins...");
-/*  pinMode(TriggerPin,INPUT_PULLUP);
-  pinMode(ReloadPin, INPUT_PULLUP);
-  pinMode(AnimationPin, INPUT_PULLUP);
-  #ifdef DebugStepper
-    pinMode(DebugStepPin, INPUT_PULLUP);
-    pinMode(DebugDirectionPin, INPUT_PULLUP);
-    pinMode(DebugMeasureStepsBetweenIndexPin, INPUT_PULLUP);
-  #endif */
   pinMode(IndexPin, INPUT_PULLUP);
   trigger.setRelease(FireRoutine);
   animation.setRelease(AnimationRoutine);
   reload.setPress(IndexRoutine);
   reload.setRelease(StopMotion);
   #ifdef DebugStepper
+    pinMode(DebugStepPin, INPUT_PULLUP);
+    pinMode(DebugFireCircuit, INPUT_PULLUP);
     debugMeasure.setRelease(MeasureStepsBetweenIndexPin);
   #endif
   DebugSerial.println(" complete.");
 
   DebugSerial.print("Setup stepper library... ");
   stepper.connectToPins(StepPin, DirectionPin);
+  stepper.setSpeedInStepsPerSecond(MaxStepsPerSecond);
+  stepper.setAccelerationInStepsPerSecondPerSecond(MaxAccel);
   DebugSerial.println(" complete.");
 }
 
@@ -95,7 +101,8 @@ void loop() {  // put your main code here, to run repeatedly:
   buttonCheck();
 }
 
-void buttonCheck(){
+
+void buttonCheck(){ //checks all buttons
   //code for button inputs to call routines...
   trigger.isClick();
   reload.isClick();
@@ -106,25 +113,138 @@ void buttonCheck(){
   #endif
 }
 
-void IndexRoutine(){ //routine to index drum
+void buttonCheckRR(){ //checks one button only per call, in round robin
+  switch(buttonRoundRobin){
+    case 0: {
+      trigger.isClick();
+      buttonRoundRobin++;
+      break;
+    }
+    case 1: {
+      reload.isClick();
+      buttonRoundRobin++;
+      break;
+    }
+    case 2: {
+      animation.isClick();
+      buttonRoundRobin++;
+      break;
+    }
+    case 3: {
+      #ifdef DebugStepper
+        debugMeasure.isClick();
+        buttonRoundRobin = 0;
+        break;
+      #else
+        buttonRoundRobin = 0;
+        break;
+      #endif
+    }
+  }
+}
+
+void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
   stopMotion = false; //allow motion
 }
 
 void FireRoutine(){ //routine to switch barrels after firing
-  if (stopMotion) {return;} //if motion not allowed do nothing
+  //Check Holds...
+  if (stopMotion) { //if motion not allowed do nothing
+    DebugSerial.println("FireRoutine Error stopMotion blocking");
+    return;
+  } 
+  if (inMotion) { //if already inMotion cant move...
+    DebugSerial.println("FireRoutine Error already in motion");
+    return;
+  }
+  //Start motion
+  inMotion = true; //block others till complete
+  long currentPosition = stepper.getCurrentPositionInSteps();
+  stepper.setTargetPositionInSteps(currentPosition + (StepsPerRotation/2));
+  while(!stepper.motionComplete()){
+    stepper.processMovement();
+    if (stopMotion) {
+      stepper.setTargetPositionToStop();
+    }
+    buttonCheckRR();
+  }
+  inMotion = false; //release hold
 }
 
 void AnimationRoutine(){ //routine to perform animation
-  if (stopMotion) {return;} //if motion not allowed do nothing
+  //Check Holds...
+  if (stopMotion) { //if motion not allowed do nothing
+    DebugSerial.println("AnimationRoutine Error stopMotion blocking");
+    return;
+  } 
+  if (inMotion) { //if already inMotion cant move...
+    DebugSerial.println("AnimationRoutine Error already in motion");
+    return;
+  }
+  //Start motion
+  inMotion = true; //block others till complete
+  //code here for animation
+
+
+
+
+
+  inMotion = false; //release hold
 }
 
-void StopMotion(){
+void StopMotion(){ //called when reload pin is released
   stopMotion = true; //Stop motion...
   stepper.setTargetPositionToStop(); //stop motion...
 }
 
 #ifdef DebugStepper
 void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index hits via serial output
+  //Check Holds...
+  if (stopMotion) { //if motion not allowed do nothing
+    DebugSerial.println("MeasureStepsBetween Error stopMotion blocking");
+    return;
+  } 
+  if (inMotion) { //if already inMotion cant move...
+    DebugSerial.println("MeasureStepsBetween Error already in motion");
+    return;
+  }
+  //Variables...
+  long currentPosition = 0;
+  long lastIndexPress = 0;
+  long lastIndexRelease = 0;
+  long lastFireCircuitPress = 0;
+  long lastFireCircuitRelease = 0;
+  int indexSet = 0;
+  int indexReset = 0;
+  int fireSet = 0;
+  DebugSerial.println("Measure steps for pins routine starting");
+  // Start motion
+  inMotion = true; //block others till complete
+  //check index pin and DebugFireCircuit pin for measurements
+  //move slowly
+  stepper.setSpeedInStepsPerSecond(MaxStepsPerSecond/20);
+  stepper.setCurrentPositionInSteps(currentPosition);
+  stepper.setTargetPositionInSteps(2000000000);
+  while(!stepper.motionComplete()){
+    stepper.processMovement();
+    if (digitalRead(IndexPin)) { //pin released
+      if (indexSet != 0 && indexReset == 0) {
 
+      }
+    } else { //pin pressed
+
+    }
+    if (digitalRead(DebugFireCircuit)) { //pin released
+
+    } else { //pin pressed
+
+    }
+  }
+
+currentPosition = stepper.getCurrentPositionInSteps();
+
+
+  stepper.setSpeedInStepsPerSecond(MaxStepsPerSecond); // return movement speed to normal
+  inMotion = false; //release hold
 }
 #endif
