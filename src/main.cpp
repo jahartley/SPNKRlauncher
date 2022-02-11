@@ -28,8 +28,8 @@
 //Stepper Constants
 #define MaxAccel 10000
 #define MaxDrumRpm 500
-#define DrumTeeth 400
-#define StepperTeeth 12
+#define DrumTeeth 370
+#define StepperTeeth 60
 #define MicroStepping 2
 #define Reverse false
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)
@@ -72,7 +72,7 @@ void FireRoutine();
 void AnimationRoutine();
 void StopMotion();
 float RpmToSteps(int);
-long TargetPositionRotations(long, int);
+long TargetPositionRotations(long, float);
 #ifdef DebugStepper
   void MeasureStepsBetweenIndexPin();
 #endif
@@ -179,7 +179,7 @@ void FireRoutine(){ //routine to switch barrels after firing
   //Start motion
   inMotion = true; //block others till complete
   long currentPosition = stepper.getCurrentPositionInSteps();
-  stepper.setTargetPositionInSteps(currentPosition + (StepsPerRotation/2));
+  stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.5));
   while(!stepper.motionComplete()){
     stepper.processMovement();
     if (stopMotion) {
@@ -226,6 +226,9 @@ void StopMotion(){ //called when reload pin is released
 }
 
 #ifdef DebugStepper
+#define test1 //test1 is to get rpm and accel info
+//#define test2 //test 2 measures steps from index pin triggers
+
 void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index hits via serial output
   //Check Holds...
   if (stopMotion) { //if motion not allowed do nothing
@@ -237,8 +240,10 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
     return;
   }
 
-  /*
+  #ifdef test2 //test2 code
   //Variables...
+  int testRpm = 10;
+  int testAccel = 10;
   long currentPosition = 0;
   long lastIndexPress = 0;
   long lastIndexRelease = 0;
@@ -251,36 +256,64 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   inMotion = true; //block others till complete
   //check index pin and DebugFireCircuit pin for measurements
   //move slowly
-  stepper.setSpeedInStepsPerSecond(MaxStepsPerSecond/20);
+  stepper.setSpeedInStepsPerSecond(RpmToSteps(testRpm));
+  stepper.setAccelerationInStepsPerSecondPerSecond(testAccel);
   stepper.setCurrentPositionInSteps(currentPosition);
-  stepper.setTargetPositionInSteps(2000000000);
+  stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 10));
   while(!stepper.motionComplete()){
     stepper.processMovement();
+    // Index pin checking... 1 is released, 0 pressed.
+    // if released and was released, do nothing...
+    // if pressed and was released, msg position, indexSet = 0
+    // if pressed and was pressed do nothing,
+    // if released and was pressed, msg position, indexSet = 1
     if (digitalRead(IndexPin)) { //pin released
       if (indexSet == 0) { // default position first time through
-        // 
+        // was released last time... do nothing
+      } else if (indexSet == 1) {
+        //was pressed but now released
+        currentPosition = stepper.getCurrentPositionInSteps();
+        long diff = lastIndexPress - currentPosition;
+        long diff2 = lastIndexRelease - currentPosition;
+        DebugSerial.print("Index Released. Steps since last press: ");
+        DebugSerial.print(diff);
+        DebugSerial.print(" and since last release: ");
+        DebugSerial.println(diff2);
+        lastIndexRelease = currentPosition;
+        indexSet = 0;
       }
     } else { //pin pressed
       if (indexSet == 0) {
-        indexSet = 1; //initial pin press...
-        lastIndexPress = stepper.getCurrentPositionInSteps();
+        //pin now pressed...
+        currentPosition = stepper.getCurrentPositionInSteps();
+        long diff = lastIndexPress - currentPosition;
+        long diff2 = lastIndexRelease - currentPosition;
+        DebugSerial.print("Index Pressed. Steps since last press: ");
+        DebugSerial.print(diff);
+        DebugSerial.print(" and since last release: ");
+        DebugSerial.println(diff2);
+        lastIndexPress = currentPosition;
+        indexSet = 1;
+      } else if (indexSet == 1) {
+        // pin was pressed last time, do nothing
       }
-
     }
     /*
     if (digitalRead(DebugFireCircuit)) { //pin released
 
     } else { //pin pressed
 
-    } 
+    } */
+    buttonCheckRR();
   }
 
   currentPosition = stepper.getCurrentPositionInSteps();
 
 
   stepper.setSpeedInStepsPerSecond(MaxStepsPerSecond); // return movement speed to normal
-  */
+  #endif
 
+  #ifdef test1 //test 1 code
   // Start motion
   inMotion = true; //block others till complete
   //rotate drum 2 rotations and stop...
@@ -302,6 +335,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
     }
     buttonCheckRR();
   }
+  #endif
   DebugSerial.println("Movement complete");
   inMotion = false; //release hold
 }
@@ -311,6 +345,6 @@ float RpmToSteps(int rpm) {
   return (rpm/60)*StepsPerRotation;
 }
 
-long TargetPositionRotations(long currentPosition, int rotations) {
+long TargetPositionRotations(long currentPosition, float rotations) {
   return currentPosition + (StepsPerRotation * rotations);
 }
