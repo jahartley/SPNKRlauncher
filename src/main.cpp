@@ -4,7 +4,6 @@
 */
 
 //Define Settings
-#define DebugSerial SerialUSB   //Pick which serial port to use for debug messages
 #define DebugStepper            //turn on debug stepper functions, comment out to turn off
 #define WaitForUsbSerial        //Wait for Debug Serial connection on startup, comment to turn off
 
@@ -12,15 +11,15 @@
 //!!!!!!Only one of the below modes should be uncommented at a time!!!!!!!
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-//#define final //final is used when done with testing
+//#define final   //final is used when done with testing
 
-#define test1 //test1 is to get rpm and accel info by pressing trigger, self test, B4 buttons
+#define test1   //test1 is to get rpm and accel info by pressing trigger, self test, B4 buttons
                 //press b4 to move 2 rotations... set by teeth count in stepper constants
                 //press trigger to increase rpm for next run
                 //press self test to increase accel for next run
                 //keep prefered rpm and accel for later
 
-//#define test2 //test 2 measures steps from index pin triggers
+//#define test2   //test 2 measures steps from index pin triggers
                 //press b4 pin to spin drum 10 times, speed and accel set in test2 settings
                 //note the info displayed, and use value for test 3
 
@@ -29,20 +28,8 @@
               //use trigger to move trigger amount in settings till drum is in appropriate position
               //note steps from index to position for use in final...
 
-//Pin Definitions for hookups
-#define LEDPin PC13
-#define TriggerPin PB6
-#define ReloadPin PB7
-#define IndexPin PB8
-#define AnimationPin PB9
-#define StepPin PB12
-#define DirectionPin PB13
-
-#ifdef DebugStepper
-  #define DebugStepPin PB3
-  #define DebugFireCircuit PB15
-  #define DebugMeasureStepsBetweenIndexPin PB4
-#endif
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #ifdef test1 //test1 settings
   #define StartRpm 10      //drum start rpm for test1 adjust as needed
@@ -66,13 +53,13 @@
   long currentPosition = 0;
 #endif
 
-#ifdef final
+#ifdef final //final settings
   #define StartRpm 500          //drum rpm for final
   #define StartAccel 10000      //accel rate for final
   #define StepsFromLimit 308      //steps from limit release till line up
 #endif
-//Stepper Constants
 
+//Stepper Constants
 #define DrumTeeth 370           //number of teeth on drum
 #define StepperTeeth 60         //number of teeth on stepper
 #define MicroStepping 2         //microstep setting on stepper driver
@@ -80,10 +67,26 @@
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)   //steps per drum rotation calc
 #define MaxStepsPerSecond (MaxDrumRpm/60)*StepsPerRotation  //max steps per sec used not in testing
 
+//Pin Definitions for hookups
+#define LEDPin PC13
+#define TriggerPin PB6
+#define ReloadPin PB7
+#define IndexPin PB8
+#define AnimationPin PB9
+#define StepPin PB12
+#define DirectionPin PB13
+
+#ifdef DebugStepper
+  //#define DebugStepPin PB3
+  //#define DebugFireCircuit PB15
+  #define DebugMeasureStepsBetweenIndexPin PB4
+#endif
+
 
 #include <Arduino.h>            //Add arduino functions
 #include <FlexyStepper.h>       //Add Stepper Library
 #include <ButtonKing.h>         //Add button king debounce
+#define DebugSerial SerialUSB   //Pick which serial port to use for debug messages
 
 //buttons
 ButtonKing trigger(TriggerPin, true, true);
@@ -97,10 +100,10 @@ ButtonKing animation(AnimationPin, true, true);
 
 FlexyStepper stepper;           //Create stepper object
 
-//variables
-bool stopMotion = false;
-bool inMotion = false;
-int buttonRoundRobin = 0;
+//globl variables
+bool stopMotion = false;  //stops motion when carrage open
+bool inMotion = false;    //prevents another function from running while another is in motion
+int buttonRoundRobin = 0; //used by button round robin function to speed up stepper motion
 
 #ifdef DebugStepper
   int buttonCount = 4;
@@ -108,6 +111,7 @@ int buttonRoundRobin = 0;
   int buttonCount = 3;
 #endif
 
+//function declarations required by cpp
 void buttonCheck();
 void buttonCheckRR();
 void IndexRoutine();
@@ -121,7 +125,7 @@ long TargetPositionRotations(long, float);
 #endif
 
 
-void setup() {  // put your setup code here, to run once:
+void setup() {  // startup code
   DebugSerial.begin(); //activate USB CDC driver
   #ifdef WaitForUsbSerial
     while(!DebugSerial); //blocks till usb serial is connected... turn off if not connected to PC.
@@ -134,8 +138,8 @@ void setup() {  // put your setup code here, to run once:
   reload.setPress(IndexRoutine);
   reload.setRelease(StopMotion);
   #ifdef DebugStepper
-    pinMode(DebugStepPin, INPUT_PULLUP);
-    pinMode(DebugFireCircuit, INPUT_PULLUP);
+    //pinMode(DebugStepPin, INPUT_PULLUP);
+    //pinMode(DebugFireCircuit, INPUT_PULLUP);
     debugMeasure.setRelease(MeasureStepsBetweenIndexPin);
   #endif
   DebugSerial.println(" complete.");
@@ -198,6 +202,7 @@ void buttonCheckRR(){ //checks one button only per call, in round robin
 
 void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
   stopMotion = false; //allow motion
+  DebugSerial.println("LID Closed allow motion");
   #ifdef final
     //code here for index routine
   #endif
@@ -383,6 +388,7 @@ void AnimationRoutine(){ //routine to perform animation
 void StopMotion(){ //called when reload pin is released
   stopMotion = true; //Stop motion...
   stepper.setTargetPositionToStop(); //stop motion...
+  DebugSerial.println("LID OPENED STOP IMMEADATLEY>>>");
 }
 
 #ifdef DebugStepper
