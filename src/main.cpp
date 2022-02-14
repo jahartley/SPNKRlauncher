@@ -32,19 +32,19 @@
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #ifdef test1 //test1 settings
-  #define StartRpm 10      //drum start rpm for test1 adjust as needed
-  #define StartAccel 100   //drum start accel for test1 adjust as needed
-  int currentRpm = StartRpm;
+  #define StartRpm 10.0      //drum start rpm for test1 adjust as needed
+  #define StartAccel 800   //drum start accel for test1 adjust as needed
+  float currentRpm = StartRpm;
   int currentAccel = StartAccel;
 #endif
 
 #ifdef test2 //test2 settings... set with data from test1
-  #define StartRpm 10      //drum start rpm for test2 adjust as needed
+  #define StartRpm 10.0      //drum start rpm for test2 adjust as needed
   #define StartAccel 100   //drum start accel for test2 adjust as needed
 #endif
 
 #ifdef test3 //test3 Settings... set with data from test1
-  #define StartRpm 10         //drum start rpm for test3 adjust as needed
+  #define StartRpm 10.0         //drum start rpm for test3 adjust as needed
   #define StartAccel 1000     //drum start accel for test3 adjust as needed
   #define SlowRpm 5           //slow speed for precision
   #define StepsPerTrigger 100 //steps to move per trigger press
@@ -118,7 +118,7 @@ void IndexRoutine();
 void FireRoutine();
 void AnimationRoutine();
 void StopMotion();
-float RpmToSteps(int);
+float RpmToSteps(float);
 long TargetPositionRotations(long, float);
 #ifdef DebugStepper
   void MeasureStepsBetweenIndexPin();
@@ -485,7 +485,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
 }
 #endif
 
-float RpmToSteps(int rpm) {
+float RpmToSteps(float rpm) {
   return (rpm/60)*StepsPerRotation;
 }
 
