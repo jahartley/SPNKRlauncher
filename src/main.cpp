@@ -83,6 +83,9 @@
   #define DebugMeasureStepsBetweenIndexPin PB4
 #endif
 
+//Button King press timer wait time
+#define WaitTime 1
+
 
 #include <Arduino.h>            //Add arduino functions
 #include <FlexyStepper.h>       //Add Stepper Library
@@ -144,6 +147,11 @@ void setup() {  // startup code
   DebugSerial.println("SPNKR Launcher starting");
   DebugSerial.print("Setup input pins...");
   pinMode(IndexPin, INPUT_PULLUP);
+  //setup press/release wait timers
+  trigger.setTimeCount(WaitTime);
+  animation.setTimeCount(WaitTime);
+  reload.setTimeCount(WaitTime);
+  //setup button functions
   trigger.setRelease(FireRoutine);
   #ifdef test2
     trigger.setClick(click1);
@@ -160,6 +168,7 @@ void setup() {  // startup code
   #ifdef DebugStepper
     //pinMode(DebugStepPin, INPUT_PULLUP);
     //pinMode(DebugFireCircuit, INPUT_PULLUP);
+    debugMeasure.setTimeCount(WaitTime);
     debugMeasure.setRelease(MeasureStepsBetweenIndexPin);
   #endif
   DebugSerial.println(" complete.");
