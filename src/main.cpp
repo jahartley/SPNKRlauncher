@@ -40,7 +40,7 @@
 
 #ifdef test2 //test2 settings... set with data from test1
   #define StartRpm 60.0      //drum start rpm for test2 adjust as needed
-  #define StartAccel 10000.0   //drum start accel for test2 adjust as needed
+  #define StartAccel 2000.0   //drum start accel for test2 adjust as needed
 #endif
 
 #ifdef test3 //test3 Settings... set with data from test1
@@ -169,6 +169,8 @@ void setup() {  // startup code
   
   stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
   stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
+  stepper.setCurrentPositionInSteps(0);
+  stepper.setTargetPositionInSteps(0);
   
   DebugSerial.println(" complete.");
   DebugSerial.print("Variables check: DrumTeeth: ");
@@ -189,7 +191,7 @@ void setup() {  // startup code
 
 void loop() {  // put your main code here, to run repeatedly:
   buttonCheck();
-  stepper.processMovement();
+  //stepper.processMovement();
 }
 
 
