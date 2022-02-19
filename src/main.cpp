@@ -84,7 +84,7 @@
 #endif
 
 //Button King press timer wait time
-#define WaitTime 1
+#define WaitTime 20
 
 
 #include <Arduino.h>            //Add arduino functions
