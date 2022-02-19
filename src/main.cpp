@@ -426,6 +426,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   long lastFireCircuitPress = 0;
   long lastFireCircuitRelease = 0;
   int indexSet = 0;
+  int countPress = 0;
   DebugSerial.println("Measure steps for pins routine starting");
   // Start motion
   inMotion = true; //block others till complete
@@ -443,27 +444,39 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
       if (indexSet == 1) {
         //was pressed but now released
         currentPosition = stepper.getCurrentPositionInSteps();
-        long diff = lastIndexPress - currentPosition;
-        long diff2 = lastIndexRelease - currentPosition;
-        DebugSerial.print("Index Released. Steps since last press: ");
-        DebugSerial.print(diff);
-        DebugSerial.print(" and since last release: ");
-        DebugSerial.println(diff2);
-        lastIndexRelease = currentPosition;
-        indexSet = 0;
+        if (lastIndexPress - currentPosition > 20) {
+          long diff = currentPosition - lastIndexPress;
+          long diff2 = currentPosition - lastIndexRelease;
+          DebugSerial.print("Index Released. Steps since last press: ");
+          DebugSerial.print(diff);
+          DebugSerial.print(" and since last release: ");
+          DebugSerial.println(diff2);
+          lastIndexRelease = currentPosition;
+          indexSet = 0;
+          countPress++;
+        } else {
+          DebugSerial.println("Bounce avoided... release");
+        }
       }
     } else { //pin pressed
       if (indexSet == 0) {
         //pin now pressed...
         currentPosition = stepper.getCurrentPositionInSteps();
-        long diff = lastIndexPress - currentPosition;
-        long diff2 = lastIndexRelease - currentPosition;
-        DebugSerial.print("Index Pressed. Steps since last press: ");
-        DebugSerial.print(diff);
-        DebugSerial.print(" and since last release: ");
-        DebugSerial.println(diff2);
-        lastIndexPress = currentPosition;
-        indexSet = 1;
+        if (lastIndexRelease - currentPosition > 20) {
+          long diff = currentPosition - lastIndexPress;
+          long diff2 = currentPosition - lastIndexRelease;
+          DebugSerial.print("New Press group count is: ");
+          DebugSerial.print(countPress);
+          DebugSerial.println(" ----------------------------------");
+          DebugSerial.print("Index Pressed. Steps since last press: ");
+          DebugSerial.print(diff);
+          DebugSerial.print(" and since last release: ");
+          DebugSerial.println(diff2);
+          lastIndexPress = currentPosition;
+          indexSet = 1;
+        } else {
+          DebugSerial.println("Bounce avoided... press");
+        }
       }
     }
  
