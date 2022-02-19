@@ -13,17 +13,17 @@
 
 //#define final   //final is used when done with testing
 
-#define test1   //test1 is to get rpm and accel info by pressing trigger, self test, B4 buttons
+//#define test1   //test1 is to get rpm and accel info by pressing trigger, self test, B4 buttons
                 //press b4 to move 2 rotations... set by teeth count in stepper constants
                 //press trigger to increase rpm for next run
                 //press self test to increase accel for next run
                 //keep prefered rpm and accel for later
 
-//#define test2   //test 2 measures steps from index pin triggers
+#define test2   //test 2 measures steps from index pin triggers
                 //press b4 pin to spin drum 10 times, speed and accel set in test2 settings
                 //note the info displayed, and use value for test 3
 
-//#define test3 //test 3 uses trigger to find steps from index release to centered position,
+//#define test3  //test 3 uses trigger to find steps from index release to centered position,
               //use self test button to move to index using value from test2
               //use trigger to move trigger amount in settings till drum is in appropriate position
               //note steps from index to position for use in final...
@@ -33,39 +33,39 @@
 
 #ifdef test1 //test1 settings
   #define StartRpm 10.0      //drum start rpm for test1 adjust as needed
-  #define StartAccel 800   //drum start accel for test1 adjust as needed
+  #define StartAccel 2000.0   //drum start accel for test1 adjust as needed
   float currentRpm = StartRpm;
-  int currentAccel = StartAccel;
+  float currentAccel = StartAccel;
 #endif
 
 #ifdef test2 //test2 settings... set with data from test1
-  #define StartRpm 10.0      //drum start rpm for test2 adjust as needed
-  #define StartAccel 100   //drum start accel for test2 adjust as needed
+  #define StartRpm 60.0      //drum start rpm for test2 adjust as needed
+  #define StartAccel 10000.0   //drum start accel for test2 adjust as needed
 #endif
 
 #ifdef test3 //test3 Settings... set with data from test1
-  #define StartRpm 10.0         //drum start rpm for test3 adjust as needed
-  #define StartAccel 1000     //drum start accel for test3 adjust as needed
-  #define SlowRpm 5           //slow speed for precision
-  #define StepsPerTrigger 100 //steps to move per trigger press
-  #define StepsBetweenIndexRelease 1000 //adjust from results of test2...
+  #define StartRpm 60.0         //drum start rpm for test3 adjust as needed
+  #define StartAccel 10000.0     //drum start accel for test3 adjust as needed
+  #define SlowRpm 10.0           //slow speed for precision
+  #define StepsPerTrigger 100.0 //steps to move per trigger press
+  #define StepsBetweenIndexRelease 1000.0 //adjust from results of test2...
   long stepsFromIndexRelease = 0;
   long currentPosition = 0;
 #endif
 
 #ifdef final //final settings
-  #define StartRpm 500          //drum rpm for final
-  #define StartAccel 10000      //accel rate for final
-  #define StepsFromLimit 308      //steps from limit release till line up
+  #define StartRpm 60.0          //drum rpm for final
+  #define StartAccel 10000.0      //accel rate for final
+  #define StepsFromLimit 308.0      //steps from limit release till line up
 #endif
 
 //Stepper Constants
-#define DrumTeeth 370           //number of teeth on drum
-#define StepperTeeth 60         //number of teeth on stepper
-#define MicroStepping 2         //microstep setting on stepper driver
+#define DrumTeeth 365.0           //number of teeth on drum
+#define StepperTeeth 60.0         //number of teeth on stepper
+#define MicroStepping 2.0         //microstep setting on stepper driver
 #define Reverse false           //not used yet
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)   //steps per drum rotation calc
-#define MaxStepsPerSecond (MaxDrumRpm/60)*StepsPerRotation  //max steps per sec used not in testing
+#define MaxStepsPerSecond (StartRpm/60)*StepsPerRotation  //max steps per sec used not in testing
 
 //Pin Definitions for hookups
 #define LEDPin PC13
@@ -151,6 +151,20 @@ void setup() {  // startup code
   stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
   
   DebugSerial.println(" complete.");
+  DebugSerial.print("Variables check: DrumTeeth: ");
+  DebugSerial.print(DrumTeeth);
+  DebugSerial.print(" StepperTeeth: ");
+  DebugSerial.println(StepperTeeth);
+  DebugSerial.print("Microstepping: ");
+  DebugSerial.println(MicroStepping);
+  DebugSerial.print("StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200): ");
+  DebugSerial.println(StepsPerRotation);
+  DebugSerial.print("MaxStepsPerSecond (StartRpm/60)*StepsPerRotation : ");
+  DebugSerial.println(MaxStepsPerSecond);
+  DebugSerial.print("StartRpm: ");
+  DebugSerial.print(StartRpm);
+  DebugSerial.print(" StartAccel: ");
+  DebugSerial.println(StartAccel);
 }
 
 void loop() {  // put your main code here, to run repeatedly:
@@ -486,7 +500,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
 #endif
 
 float RpmToSteps(float rpm) {
-  return (rpm/60)*StepsPerRotation;
+  return (rpm/60.0)*StepsPerRotation;
 }
 
 long TargetPositionRotations(long currentPosition, float rotations) {
