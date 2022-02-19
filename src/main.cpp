@@ -66,6 +66,7 @@
 #define Reverse false           //not used yet
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)   //steps per drum rotation calc
 #define MaxStepsPerSecond (StartRpm/60)*StepsPerRotation  //max steps per sec used not in testing
+#define indexDebounceSteps 20
 
 //Pin Definitions for hookups
 #define LEDPin PC13
@@ -123,6 +124,16 @@ long TargetPositionRotations(long, float);
 #ifdef DebugStepper
   void MeasureStepsBetweenIndexPin();
 #endif
+#ifdef test2
+// This function will be called when the button1 was clicked.
+void click1();
+void doubleclick1();
+void tripleclick1();
+void press1();
+void release1();
+void doublepress1();
+void triplepress1();
+#endif
 
 
 void setup() {  // startup code
@@ -134,6 +145,15 @@ void setup() {  // startup code
   DebugSerial.print("Setup input pins...");
   pinMode(IndexPin, INPUT_PULLUP);
   trigger.setRelease(FireRoutine);
+  #ifdef test2
+    trigger.setClick(click1);
+    trigger.setDoubleClick(doubleclick1);
+    trigger.setTripleClick(tripleclick1);
+    trigger.setPress(press1);
+    trigger.setRelease(release1);
+    trigger.setDoublePress(doublepress1);
+    trigger.setTriplePress(triplepress1);
+  #endif
   animation.setRelease(AnimationRoutine);
   reload.setPress(IndexRoutine);
   reload.setRelease(StopMotion);
@@ -444,7 +464,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
       if (indexSet == 1) {
         //was pressed but now released
         currentPosition = stepper.getCurrentPositionInSteps();
-        if (lastIndexPress - currentPosition > 20) {
+        if (lastIndexPress - currentPosition > indexDebounceSteps) {
           long diff = currentPosition - lastIndexPress;
           long diff2 = currentPosition - lastIndexRelease;
           DebugSerial.print("Index Released. Steps since last press: ");
@@ -462,7 +482,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
       if (indexSet == 0) {
         //pin now pressed...
         currentPosition = stepper.getCurrentPositionInSteps();
-        if (lastIndexRelease - currentPosition > 20) {
+        if (lastIndexRelease - currentPosition > indexDebounceSteps) {
           long diff = currentPosition - lastIndexPress;
           long diff2 = currentPosition - lastIndexRelease;
           DebugSerial.print("New Press group count is: ");
@@ -519,3 +539,42 @@ float RpmToSteps(float rpm) {
 long TargetPositionRotations(long currentPosition, float rotations) {
   return currentPosition + (StepsPerRotation * rotations);
 }
+
+#ifdef test2
+// This function will be called when the button1 was clicked.
+void click1() {
+  Serial.println("Button 1 click.");
+} // click1
+
+// This function will be called when the button1 was double-clicked.
+void doubleclick1() {
+  Serial.println("Button 1 doubleclick.");
+} // doubleclick1
+
+// This function will be called when the button1 was triple-clicked.
+void tripleclick1() {
+  Serial.println("Button 1 tripleclick.");
+} // tripleclick1
+
+// This function will be called when the button1 was pressed.
+void press1() {
+  Serial.println("Button 1 press.");
+} // press1
+
+// This function will be called when the button1 was released..
+void release1() {
+  Serial.println("Button 1 release.");
+  Serial.println( trigger.getPressedTimer() );
+} // release1
+
+// This function will be called when the button1 was double-pressed.
+void doublepress1() {
+  Serial.println("Button 1 doublePRESS.");
+} // doublepress1
+
+// This function will be called when the button1 was triple-pressed.
+void triplepress1() {
+  Serial.println("Button 1 triplePRESS.");
+} // triplepress1
+
+#endif
