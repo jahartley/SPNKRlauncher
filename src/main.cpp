@@ -307,11 +307,11 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
         }
         
       }
-      if (stopMotion) {
-        stepper.setTargetPositionToStop();
-        DebugSerial.println("Error stopMotion stopping");
-      }
-      buttonCheckRR();
+      //if (stopMotion) {
+      //  stepper.setTargetPositionToStop();
+      //  DebugSerial.println("Error stopMotion stopping");
+      //}
+      //buttonCheckRR();
     }
 
     if (indexSet == 5) {
