@@ -72,6 +72,7 @@
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)   //steps per drum rotation calc
 #define MaxStepsPerSecond (StartRpm/60)*StepsPerRotation  //max steps per sec used not in testing
 #define indexDebounceSteps 30
+#define debounceCount 6 //+1 checks > this number
 
 //Pin Definitions for hookups
 #define LEDPin PC13
@@ -82,47 +83,19 @@
 #define StepPin PB12
 #define DirectionPin PB13
 
-#ifdef DebugStepper
-  //#define DebugStepPin PB3
-  //#define DebugFireCircuit PB15
-  #define DebugMeasureStepsBetweenIndexPin PB4
-#endif
-
-//Button King press timer wait time
-#define WaitTime 10
-
 
 #include <Arduino.h>            //Add arduino functions
 #include <FlexyStepper.h>       //Add Stepper Library
-#include <ButtonKing.h>         //Add button king debounce
 #define DebugSerial SerialUSB   //Pick which serial port to use for debug messages
-
-//buttons
-ButtonKing trigger(TriggerPin, true, true);
-ButtonKing reload(ReloadPin, true, true);
-//ButtonKing index(IndexPin, true, true);
-ButtonKing animation(AnimationPin, true, true);
-#ifdef DebugStepper
-  ButtonKing debugMeasure(DebugMeasureStepsBetweenIndexPin, true,true);
-#endif
-
 
 FlexyStepper stepper;           //Create stepper object
 
 //globl variables
 bool stopMotion = false;  //stops motion when carrage open
 bool inMotion = false;    //prevents another function from running while another is in motion
-int buttonRoundRobin = 0; //used by button round robin function to speed up stepper motion
-
-#ifdef DebugStepper
-  int buttonCount = 4;
-#else
-  int buttonCount = 3;
-#endif
 
 //function declarations required by cpp
 void buttonCheck();
-void buttonCheckRR();
 void IndexRoutine();
 void FireRoutine();
 void AnimationRoutine();
@@ -132,17 +105,6 @@ long TargetPositionRotations(long, float);
 #ifdef DebugStepper
   void MeasureStepsBetweenIndexPin();
 #endif
-#ifdef test2
-// This function will be called when the button1 was clicked.
-void click1();
-void doubleclick1();
-void tripleclick1();
-void press1();
-void release1();
-void doublepress1();
-void triplepress1();
-#endif
-
 
 void setup() {  // startup code
   DebugSerial.begin(); //activate USB CDC driver
@@ -152,32 +114,10 @@ void setup() {  // startup code
   DebugSerial.println("SPNKR Launcher starting");
   DebugSerial.print("Setup input pins...");
   pinMode(IndexPin, INPUT_PULLUP);
-  //setup press/release wait timers
-  trigger.setTimeCount(WaitTime);
-  trigger.setTimeDebounce(50);
-  animation.setTimeCount(WaitTime);
-  reload.setTimeCount(500);
-  reload.setTimeDebounce(50);
-  //setup button functions
-  trigger.setRelease(FireRoutine);
-  #ifdef test2
-    trigger.setClick(click1);
-    trigger.setDoubleClick(doubleclick1);
-    trigger.setTripleClick(tripleclick1);
-    trigger.setPress(press1);
-    trigger.setRelease(release1);
-    trigger.setDoublePress(doublepress1);
-    trigger.setTriplePress(triplepress1);
-  #endif
-  animation.setRelease(AnimationRoutine);
-  reload.setPress(IndexRoutine);
-  reload.setRelease(StopMotion);
-  #ifdef DebugStepper
-    //pinMode(DebugStepPin, INPUT_PULLUP);
-    //pinMode(DebugFireCircuit, INPUT_PULLUP);
-    debugMeasure.setTimeCount(WaitTime);
-    debugMeasure.setRelease(MeasureStepsBetweenIndexPin);
-  #endif
+  pinMode(TriggerPin, INPUT_PULLUP);
+  pinMode(ReloadPin, INPUT_PULLUP);
+  pinMode(AnimationPin, INPUT_PULLUP);
+
   DebugSerial.println(" complete.");
 
   DebugSerial.print("Setup stepper library... ");
@@ -208,48 +148,6 @@ void setup() {  // startup code
 void loop() {  // put your main code here, to run repeatedly:
   buttonCheck();
   //stepper.processMovement();
-}
-
-
-void buttonCheck(){ //checks all buttons
-  //code for button inputs to call routines...
-  trigger.isClick();
-  reload.isClick();
-  //index.isClick();
-  animation.isClick();
-  #ifdef DebugStepper
-    debugMeasure.isClick();
-  #endif
-}
-
-void buttonCheckRR(){ //checks one button only per call, in round robin
-  switch(buttonRoundRobin){
-    case 0: {
-      trigger.isClick();
-      buttonRoundRobin++;
-      break;
-    }
-    case 1: {
-      reload.isClick();
-      buttonRoundRobin++;
-      break;
-    }
-    case 2: {
-      animation.isClick();
-      buttonRoundRobin++;
-      break;
-    }
-    case 3: {
-      #ifdef DebugStepper
-        debugMeasure.isClick();
-        buttonRoundRobin = 0;
-        break;
-      #else
-        buttonRoundRobin = 0;
-        break;
-      #endif
-    }
-  }
 }
 
 void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
@@ -309,11 +207,11 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
         }
         
       }
-      //if (stopMotion) {
-      //  stepper.setTargetPositionToStop();
-      //  DebugSerial.println("Error stopMotion stopping");
-      //}
-      //buttonCheckRR();
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("Error stopMotion stopping");
+      }
+      buttonCheck();
     }
 
     if (indexSet == 5) {
@@ -373,7 +271,7 @@ void FireRoutine(){ //routine to switch barrels after firing
         stepper.setTargetPositionToStop();
         DebugSerial.println("stopped by stop motion");
       }
-      buttonCheckRR();
+      buttonCheck();
     }
     DebugSerial.println("Done...");
     currentPosition = stepper.getCurrentPositionInSteps();
@@ -403,7 +301,7 @@ void FireRoutine(){ //routine to switch barrels after firing
     if (stopMotion) {
       stepper.setTargetPositionToStop();
     }
-    buttonCheckRR();
+    buttonCheck();
   }
   inMotion = false; //release hold
   #endif
@@ -472,7 +370,7 @@ void AnimationRoutine(){ //routine to perform animation
         stepper.setTargetPositionToStop();
         DebugSerial.println("test3 animate Error stopMotion stopping");
       }
-      buttonCheckRR();
+      buttonCheck();
     }
 
     if (indexSet == 4) { 
@@ -516,7 +414,7 @@ void AnimationRoutine(){ //routine to perform animation
       if (stopMotion) {
         stepper.setTargetPositionToStop();
       }
-      buttonCheckRR();
+      buttonCheck();
     }
     //place all animation positions from last to first...
     currentPosition = stepper.getCurrentPositionInSteps();
@@ -630,7 +528,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
       }
     }
  
-    buttonCheckRR();
+    buttonCheck();
   }
   #endif
 
@@ -654,7 +552,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
       stepper.setTargetPositionToStop();
       DebugSerial.println("Motion stopped by stop motion...");
     }
-    buttonCheckRR();
+    buttonCheck();
   }
   #endif
   DebugSerial.println("Movement complete");
@@ -670,41 +568,120 @@ long TargetPositionRotations(long currentPosition, float rotations) {
   return currentPosition + (StepsPerRotation * rotations);
 }
 
-#ifdef test2
-// This function will be called when the button1 was clicked.
-void click1() {
-  Serial.println("Button 1 click.");
-} // click1
 
-// This function will be called when the button1 was double-clicked.
-void doubleclick1() {
-  Serial.println("Button 1 doubleclick.");
-} // doubleclick1
+//3 buttons round robin 42ms debounce
+//check each 7 times on a 2ms interval rr through the 3 buttons
+//need state, counter, rotation counter
+int b1counter = 0;
+int b2counter = 0;
+int b3counter = 0;
+int b1state = 0;
+int b2state = 0;
+int b3state = 0;
+int b1flag = 0;
+int b2flag = 0;
+int b3flag = 0;
 
-// This function will be called when the button1 was triple-clicked.
-void tripleclick1() {
-  Serial.println("Button 1 tripleclick.");
-} // tripleclick1
+int rrCounter = 0;
 
-// This function will be called when the button1 was pressed.
-void press1() {
-  Serial.println("Button 1 press.");
-} // press1
+unsigned long lastTime = 0;
+unsigned long now = 0;
 
-// This function will be called when the button1 was released..
-void release1() {
-  Serial.println("Button 1 release.");
-  Serial.println( trigger.getPressedTimer() );
-} // release1
 
-// This function will be called when the button1 was double-pressed.
-void doublepress1() {
-  Serial.println("Button 1 doublePRESS.");
-} // doublepress1
+void buttonCheck() {
+  now = millis();
+  if (now - lastTime < 2) return; // stop if less than 2ms gone by
+  lastTime = now;
+  switch (rrCounter) {
+    case 0:
+      /* code */
+      if (digitalRead(TriggerPin)) {
+        if (b1state == 0) b1counter++;
+        if (b1state == 1) b1counter = 0;
+        if (b1counter > debounceCount) {
+          b1counter = 0;
+          b1state = 1;
+          b1flag = 1;
+        }
+      } else {
+        if (b1state == 1) b1counter++;
+        if (b1state == 0) b1counter = 0;
+        if (b1counter > debounceCount) {
+          b1counter = 0;
+          b1state = 0;
+          b1flag = 2;
+        }
+      }
+      rrCounter++;
+    break;
+  
+    case 1:
+      /* code */
+      if (digitalRead(ReloadPin)) {
+        if (b2state == 0) b2counter++;
+        if (b2state == 1) b2counter = 0;
+        if (b2counter > debounceCount) {
+          b2counter = 0;
+          b2state = 1;
+          b2flag = 1;
+        }
+      } else {
+        if (b2state == 1) b2counter++;
+        if (b1state == 0) b2counter = 0;
+        if (b2counter > debounceCount) {
+          b2counter = 0;
+          b2state = 0;
+          b2flag = 2;
+        }
+      }
+      rrCounter++;
+    break;
+  
+    case 2:
+      /* code */
+      if (digitalRead(AnimationPin)) {
+        if (b3state == 0) b3counter++;
+        if (b3state == 1) b3counter = 0;
+        if (b3counter > debounceCount) {
+          b3counter = 0;
+          b3state = 1;
+          b3flag = 1;
+        }
+      } else {
+        if (b3state == 1) b3counter++;
+        if (b3state == 0) b3counter = 0;
+        if (b3counter > debounceCount) {
+          b3counter = 0;
+          b3state = 0;
+          b3flag = 2;
+        }
+      }
+      rrCounter = 0;
+    break;
+  }
+  //flag 1 = pin released
+  //flag 2 = pin pressed
+  if (b1flag == 1) {
+    b1flag = 0;
+    FireRoutine();
+  }
+  if (b1flag == 2) {
+    b1flag = 0;
+  }
+  if (b2flag == 1) {
+    b2flag = 0;
+    StopMotion();
+  }
+  if (b2flag == 2) {
+    b2flag = 0;
+    IndexRoutine();
+  }
+  if (b3flag == 1) {
+    b3flag = 0;
+    AnimationRoutine();
+  }
+  if (b3flag == 2) {
+    b3flag = 0;
+  }
 
-// This function will be called when the button1 was triple-pressed.
-void triplepress1() {
-  Serial.println("Button 1 triplePRESS.");
-} // triplepress1
-
-#endif
+}
