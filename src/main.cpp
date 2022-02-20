@@ -59,7 +59,7 @@
   #define SlowRpm 10.0           //slow speed for precision
   #define StepsFromLimit 120.0      //steps from limit release till line up
   #define StepsBetweenIndexRelease 1220.0 //adjust from results of test2...
-  #define HalfTurn 1230.0
+  #define HalfTurn 1240.0
   long currentPosition = 0;
   long animationStopPosition = 0;
 #endif
@@ -157,6 +157,7 @@ void setup() {  // startup code
   trigger.setTimeDebounce(50);
   animation.setTimeCount(WaitTime);
   reload.setTimeCount(WaitTime);
+  reload.setTimeDebounce(50);
   //setup button functions
   trigger.setRelease(FireRoutine);
   #ifdef test2
