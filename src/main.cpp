@@ -66,7 +66,7 @@
 #define Reverse false           //not used yet
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)   //steps per drum rotation calc
 #define MaxStepsPerSecond (StartRpm/60)*StepsPerRotation  //max steps per sec used not in testing
-#define indexDebounceSteps 10
+#define indexDebounceSteps 30
 
 //Pin Definitions for hookups
 #define LEDPin PC13
