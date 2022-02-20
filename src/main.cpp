@@ -276,6 +276,8 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
     long lastIndexPress = 0;
     long lastIndexRelease = 0;
     while(keepGoing){
+      DebugSerial.print("KeepGoing indexSet: ");
+      DebugSerial.println(indexSet);
     while(!stepper.motionComplete()){
       stepper.processMovement();
       currentPosition = stepper.getCurrentPositionInSteps();
