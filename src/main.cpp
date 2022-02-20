@@ -174,6 +174,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
     int keepGoing = 1;
     long lastIndexPress = 0;
     long lastIndexRelease = 0;
+    long minMove = 0;
     while(keepGoing){
       DebugSerial.print("KeepGoing indexSet: ");
       DebugSerial.println(indexSet);
@@ -186,7 +187,8 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
           if (currentPosition - lastIndexPress > indexDebounceSteps) {
           //was pressed but now released
           DebugSerial.println("First Index release debounce ok");
-          stepper.setTargetPositionInSteps(currentPosition + StepsBetweenIndexRelease - 400);
+          minMove = currentPosition + StepsBetweenIndexRelease - 400;
+          stepper.setTargetPositionInSteps(minMove);
           indexSet = 2; //look for next press
           lastIndexRelease = currentPosition;
           }
@@ -207,6 +209,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
           lastIndexPress = currentPosition;
         }
         if (indexSet == 2) {
+          if (currentPosition - minMove > 0)
           //pin now pressed...
           DebugSerial.println("2 index press detect...");
           indexSet = 3;
