@@ -169,6 +169,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
     inMotion = true; //block others till complete
     currentPosition = stepper.getCurrentPositionInSteps();
     stepper.setTargetPositionInSteps(currentPosition + (HalfTurn * 4));
+    stepper.setSpeedInStepsPerSecond(RpmToSteps(SlowRpm));
     int indexSet = 0;
     int keepGoing = 1;
     long lastIndexPress = 0;
@@ -181,7 +182,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
       currentPosition = stepper.getCurrentPositionInSteps();
       if (digitalRead(IndexPin)) { //pin released
         if (indexSet == 1) {
-          DebugSerial.println("First Index release detected...");
+          //DebugSerial.println("First Index release detected...");
           if (currentPosition - lastIndexPress > indexDebounceSteps) {
           //was pressed but now released
           DebugSerial.println("First Index release debounce ok");
@@ -191,7 +192,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
           }
         }
         if (indexSet == 3) {
-          DebugSerial.println("2 index release...");
+          //DebugSerial.println("2 index release...");
           if (currentPosition - lastIndexPress > indexDebounceSteps) {
             DebugSerial.println("2 index debounce ok...");
             indexSet = 4;
