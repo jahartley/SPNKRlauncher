@@ -57,9 +57,9 @@
   #define StartRpm 60.0          //drum rpm for final
   #define StartAccel 10000.0      //accel rate for final
   #define SlowRpm 10.0           //slow speed for precision
-  #define StepsFromLimit 110.0      //steps from limit release till line up
+  #define StepsFromLimit 120.0      //steps from limit release till line up
   #define StepsBetweenIndexRelease 1220.0 //adjust from results of test2...
-  #define HalfTurn 1220.0
+  #define HalfTurn 1230.0
   long currentPosition = 0;
   long animationStopPosition = 0;
 #endif
@@ -505,6 +505,8 @@ void AnimationRoutine(){ //routine to perform animation
   animationStopPosition = stepper.getCurrentPositionInSteps();
   int animationStep = 0;
   int keepGoing = 1;
+  stepper.setSpeedInStepsPerSecond(RpmToSteps(20));
+  stepper.setAccelerationInStepsPerSecondPerSecond(2000);
   while(keepGoing){
     while(!stepper.motionComplete()){
       stepper.processMovement();
@@ -525,19 +527,19 @@ void AnimationRoutine(){ //routine to perform animation
       animationStep = 6;
     }
     if (animationStep == 4) {
-      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, -0.028));
-      animationStep = 5;
+      stepper.setTargetPositionInSteps(animationStopPosition + HalfTurn + HalfTurn);
+      animationStep = 6;
     }
     if (animationStep == 3) {
-      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.527));
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.6));
       animationStep = 4;
     }
     if (animationStep == 2) {
-      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, -0.028));
+      stepper.setTargetPositionInSteps(animationStopPosition + HalfTurn);
       animationStep = 3;
     }
     if (animationStep == 1) {
-      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.555));
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.6));
       animationStep = 2;
     }
     if (animationStep == 0) {
