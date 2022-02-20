@@ -47,7 +47,7 @@
   #define StartRpm 60.0         //drum start rpm for test3 adjust as needed
   #define StartAccel 10000.0     //drum start accel for test3 adjust as needed
   #define SlowRpm 10.0           //slow speed for precision
-  #define StepsPerTrigger 100.0 //steps to move per trigger press
+  #define StepsPerTrigger 20.0 //steps to move per trigger press
   #define StepsBetweenIndexRelease 1200.0 //adjust from results of test2...
   long stepsFromIndexRelease = 0;
   long currentPosition = 0;
