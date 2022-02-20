@@ -156,7 +156,7 @@ void setup() {  // startup code
   trigger.setTimeCount(WaitTime);
   trigger.setTimeDebounce(50);
   animation.setTimeCount(WaitTime);
-  reload.setTimeCount(WaitTime);
+  reload.setTimeCount(500);
   reload.setTimeDebounce(50);
   //setup button functions
   trigger.setRelease(FireRoutine);
@@ -553,8 +553,8 @@ void AnimationRoutine(){ //routine to perform animation
 }
 
 void StopMotion(){ //called when reload pin is released
-  stopMotion = true; //Stop motion...
-  stepper.setTargetPositionToStop(); //stop motion...
+  //stopMotion = true; //Stop motion...
+  //stepper.setTargetPositionToStop(); //stop motion...
   DebugSerial.println("LID OPENED STOP IMMEADATLEY>>>");
 }
 
