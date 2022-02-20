@@ -56,7 +56,7 @@
 #ifdef final //final settings
   #define StartRpm 60.0          //drum rpm for final
   #define StartAccel 10000.0      //accel rate for final
-  #define StepsFromLimit 308.0      //steps from limit release till line up
+  #define StepsFromLimit 180.0      //steps from limit release till line up
 #endif
 
 //Stepper Constants
@@ -359,7 +359,7 @@ void AnimationRoutine(){ //routine to perform animation
     //Start motion
     inMotion = true; //block others till complete
     currentPosition = stepper.getCurrentPositionInSteps();
-    stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.5));
+    stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 1.0));
     int indexSet = 0;
     int keepGoing = 1;
     long lastIndexPress = 0;
@@ -372,7 +372,7 @@ void AnimationRoutine(){ //routine to perform animation
         if (indexSet == 1) {
           if (currentPosition - lastIndexPress > indexDebounceSteps) {
           //was pressed but now released
-          stepper.setTargetPositionInSteps(currentPosition + StepsBetweenIndexRelease - 100);
+          stepper.setTargetPositionInSteps(currentPosition + StepsBetweenIndexRelease - 200);
           indexSet = 2; //look for next press
           lastIndexRelease = currentPosition;
           }
