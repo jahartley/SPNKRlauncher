@@ -663,25 +663,31 @@ void buttonCheck() {
   //flag 2 = pin pressed
   if (b1flag == 1) {
     b1flag = 0;
+    DebugSerial.println("Trigger Released");
     FireRoutine();
   }
   if (b1flag == 2) {
     b1flag = 0;
+    DebugSerial.println("Trigger Pressed");
   }
   if (b2flag == 1) {
     b2flag = 0;
+    DebugSerial.println("Reload Released");
     StopMotion();
   }
   if (b2flag == 2) {
     b2flag = 0;
+    DebugSerial.println("Reload Pressed");
     IndexRoutine();
   }
   if (b3flag == 1) {
     b3flag = 0;
+    DebugSerial.println("Animate Released");
     AnimationRoutine();
   }
   if (b3flag == 2) {
     b3flag = 0;
+    DebugSerial.println("Animate Pressed");
   }
 
 }
