@@ -212,12 +212,13 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
           lastIndexPress = currentPosition;
         }
         if (indexSet == 2) {
-          if (currentPosition - minMove > 0)
-          //pin now pressed...
-          DebugSerial.println("#2 index press detect...");
-          DebugSerial.println(currentPosition);
-          indexSet = 3;
-          lastIndexPress = currentPosition;
+          if (currentPosition - minMove > 0) {
+            //pin now pressed...
+            DebugSerial.println("#2 index press detect...");
+            DebugSerial.println(currentPosition);
+            indexSet = 3;
+            lastIndexPress = currentPosition;
+          }
         }
         
       }
