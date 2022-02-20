@@ -176,8 +176,8 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
     long lastIndexRelease = 0;
     long minMove = 0;
     while(keepGoing){
-      DebugSerial.print("KeepGoing indexSet: ");
-      DebugSerial.println(indexSet);
+      //DebugSerial.print("KeepGoing indexSet: ");
+      //DebugSerial.println(indexSet);
     while(!stepper.motionComplete()){
       stepper.processMovement();
       currentPosition = stepper.getCurrentPositionInSteps();
@@ -314,6 +314,69 @@ void FireRoutine(){ //routine to switch barrels after firing
   }
   //Start motion
   inMotion = true; //block others till complete
+    currentPosition = stepper.getCurrentPositionInSteps();
+    stepper.setTargetPositionInSteps(currentPosition + (HalfTurn * 4));
+    stepper.setSpeedInStepsPerSecond(RpmToSteps(40));
+    int indexSet = 0;
+    int keepGoing = 1;
+    long lastIndexPress = 0;
+    long lastIndexRelease = 0;
+    long minMove = 0;
+    while(keepGoing){
+      //DebugSerial.print("KeepGoing indexSet: ");
+      //DebugSerial.println(indexSet);
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      currentPosition = stepper.getCurrentPositionInSteps();
+      if (digitalRead(IndexPin)) { //pin released
+        if (indexSet == 1) {
+          //DebugSerial.println("First Index release detected...");
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+          //was pressed but now released
+          DebugSerial.println("#1 First Index release debounce ok");
+          DebugSerial.println(currentPosition);
+          stepper.setTargetPositionInSteps(currentPosition + StepsFromLimit);
+          indexSet = 5; //look for next press
+          lastIndexRelease = currentPosition;
+          }
+        }
+      } else { //pin pressed
+        if (indexSet == 0) {
+          //pin now pressed...
+          DebugSerial.println("#0 First index press detected...");
+          DebugSerial.println(currentPosition);
+          indexSet = 1;
+          lastIndexPress = currentPosition;
+        }
+      }
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("Error stopMotion stopping");
+      }
+      buttonCheck();
+    }
+
+    if (indexSet == 5) {
+      DebugSerial.println("#5 returning to normal speeds");
+      DebugSerial.println(currentPosition);
+      keepGoing = 0;
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
+      stepper.setCurrentPositionInSteps(0);
+    }
+
+    }
+    DebugSerial.println(currentPosition);
+    DebugSerial.println("Show TIME!!");
+
+
+
+
+
+
+
+
+
+  /*
   currentPosition = stepper.getCurrentPositionInSteps();
   stepper.setTargetPositionInSteps(currentPosition + HalfTurn);
   while(!stepper.motionComplete()){
@@ -322,7 +385,7 @@ void FireRoutine(){ //routine to switch barrels after firing
       stepper.setTargetPositionToStop();
     }
     buttonCheck();
-  }
+  }*/
   inMotion = false; //release hold
   #endif
 }
