@@ -575,9 +575,9 @@ long TargetPositionRotations(long currentPosition, float rotations) {
 int b1counter = 0;
 int b2counter = 0;
 int b3counter = 0;
-int b1state = 0;
-int b2state = 0;
-int b3state = 0;
+int b1state = 1;
+int b2state = 1;
+int b3state = 1;
 int b1flag = 0;
 int b2flag = 0;
 int b3flag = 0;
