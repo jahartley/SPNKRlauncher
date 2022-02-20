@@ -84,7 +84,7 @@
 #endif
 
 //Button King press timer wait time
-#define WaitTime 20
+#define WaitTime 10
 
 
 #include <Arduino.h>            //Add arduino functions
@@ -149,6 +149,7 @@ void setup() {  // startup code
   pinMode(IndexPin, INPUT_PULLUP);
   //setup press/release wait timers
   trigger.setTimeCount(WaitTime);
+  trigger.setTimeDebounce(30);
   animation.setTimeCount(WaitTime);
   reload.setTimeCount(WaitTime);
   //setup button functions
