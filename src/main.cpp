@@ -66,7 +66,7 @@
 #define Reverse false           //not used yet
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)   //steps per drum rotation calc
 #define MaxStepsPerSecond (StartRpm/60)*StepsPerRotation  //max steps per sec used not in testing
-#define indexDebounceSteps 20
+#define indexDebounceSteps 10
 
 //Pin Definitions for hookups
 #define LEDPin PC13
@@ -149,7 +149,7 @@ void setup() {  // startup code
   pinMode(IndexPin, INPUT_PULLUP);
   //setup press/release wait timers
   trigger.setTimeCount(WaitTime);
-  trigger.setTimeDebounce(30);
+  trigger.setTimeDebounce(50);
   animation.setTimeCount(WaitTime);
   reload.setTimeCount(WaitTime);
   //setup button functions
@@ -476,7 +476,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
       if (indexSet == 1) {
         //was pressed but now released
         currentPosition = stepper.getCurrentPositionInSteps();
-        if (lastIndexPress - currentPosition > indexDebounceSteps) {
+        if (currentPosition - lastIndexPress > indexDebounceSteps) {
           long diff = currentPosition - lastIndexPress;
           long diff2 = currentPosition - lastIndexRelease;
           DebugSerial.print("Index Released. Steps since last press: ");
@@ -486,15 +486,13 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
           lastIndexRelease = currentPosition;
           indexSet = 0;
           countPress++;
-        } else {
-          DebugSerial.println("Bounce avoided... release");
         }
       }
     } else { //pin pressed
       if (indexSet == 0) {
         //pin now pressed...
         currentPosition = stepper.getCurrentPositionInSteps();
-        if (lastIndexRelease - currentPosition > indexDebounceSteps) {
+        if (currentPosition - lastIndexRelease > indexDebounceSteps) {
           long diff = currentPosition - lastIndexPress;
           long diff2 = currentPosition - lastIndexRelease;
           DebugSerial.print("New Press group count is: ");
@@ -506,8 +504,6 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
           DebugSerial.println(diff2);
           lastIndexPress = currentPosition;
           indexSet = 1;
-        } else {
-          DebugSerial.println("Bounce avoided... press");
         }
       }
     }
