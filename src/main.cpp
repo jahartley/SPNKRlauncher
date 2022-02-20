@@ -11,7 +11,7 @@
 //!!!!!!Only one of the below modes should be uncommented at a time!!!!!!!
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-//#define final   //final is used when done with testing
+#define final   //final is used when done with testing
 
 //#define test1   //test1 is to get rpm and accel info by pressing trigger, self test, B4 buttons
                 //press b4 to move 2 rotations... set by teeth count in stepper constants
@@ -23,7 +23,7 @@
                 //press b4 pin to spin drum 10 times, speed and accel set in test2 settings
                 //note the info displayed, and use value for test 3
 
-#define test3 //test 3 uses trigger to find steps from index release to centered position,
+//#define test3 //test 3 uses trigger to find steps from index release to centered position,
               //use self test button to move to index using value from test2
               //use trigger to move trigger amount in settings till drum is in appropriate position
               //note steps from index to position for use in final...
@@ -48,7 +48,7 @@
   #define StartAccel 10000.0     //drum start accel for test3 adjust as needed
   #define SlowRpm 10.0           //slow speed for precision
   #define StepsPerTrigger 20.0 //steps to move per trigger press
-  #define StepsBetweenIndexRelease 1200.0 //adjust from results of test2...
+  #define StepsBetweenIndexRelease 1220.0 //adjust from results of test2...
   long stepsFromIndexRelease = 0;
   long currentPosition = 0;
 #endif
@@ -56,7 +56,12 @@
 #ifdef final //final settings
   #define StartRpm 60.0          //drum rpm for final
   #define StartAccel 10000.0      //accel rate for final
-  #define StepsFromLimit 180.0      //steps from limit release till line up
+  #define SlowRpm 10.0           //slow speed for precision
+  #define StepsFromLimit 110.0      //steps from limit release till line up
+  #define StepsBetweenIndexRelease 1220.0 //adjust from results of test2...
+  #define HalfTurn 1220.0
+  long currentPosition = 0;
+  long animationStopPosition = 0;
 #endif
 
 //Stepper Constants
@@ -251,6 +256,83 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
   DebugSerial.println("LID Closed allow motion");
   #ifdef final
     //code here for index routine
+    //move drum till index relase, then stop at next release...
+    //Check Holds...
+    if (stopMotion) { //if motion not allowed do nothing
+      DebugSerial.println("Error stopMotion blocking");
+      return;
+    } 
+    if (inMotion) { //if already inMotion cant move...
+      DebugSerial.println("Error already in motion");
+      return;
+    }
+    //Start motion
+    inMotion = true; //block others till complete
+    currentPosition = stepper.getCurrentPositionInSteps();
+    stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 1.0));
+    int indexSet = 0;
+    int keepGoing = 1;
+    long lastIndexPress = 0;
+    long lastIndexRelease = 0;
+    while(keepGoing){
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      currentPosition = stepper.getCurrentPositionInSteps();
+      if (digitalRead(IndexPin)) { //pin released
+        if (indexSet == 1) {
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+          //was pressed but now released
+          stepper.setTargetPositionInSteps(currentPosition + StepsBetweenIndexRelease - 400);
+          indexSet = 2; //look for next press
+          lastIndexRelease = currentPosition;
+          }
+        }
+        if (indexSet == 3) {
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+            indexSet = 4;
+            lastIndexRelease = currentPosition;
+          }
+        }
+      } else { //pin pressed
+        if (indexSet == 0) {
+          //pin now pressed...
+          indexSet = 1;
+          lastIndexPress = currentPosition;
+        }
+        if (indexSet == 2) {
+          //pin now pressed...
+          indexSet = 3;
+          lastIndexPress = currentPosition;
+        }
+        
+      }
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("Error stopMotion stopping");
+      }
+      buttonCheckRR();
+    }
+
+    if (indexSet == 5) {
+      keepGoing = 0;
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
+      stepper.setCurrentPositionInSteps(0);
+    }
+
+    if (indexSet < 4) {
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(SlowRpm));
+      stepper.setTargetPositionInSteps(stepper.getCurrentPositionInSteps() + 10);
+    }
+
+    if (indexSet == 4) { 
+      stepper.setTargetPositionInSteps(stepper.getCurrentPositionInSteps() + StepsFromLimit);
+      indexSet = 5;
+    } 
+
+    
+    }
+    DebugSerial.println("Show TIME!!");
+    inMotion = false; //release hold
   #endif
 }
 
@@ -311,23 +393,10 @@ void FireRoutine(){ //routine to switch barrels after firing
   }
   //Start motion
   inMotion = true; //block others till complete
-  long currentPosition = stepper.getCurrentPositionInSteps();
-  stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.5));
-  int indexSet = 0;
+  currentPosition = stepper.getCurrentPositionInSteps();
+  stepper.setTargetPositionInSteps(currentPosition + HalfTurn);
   while(!stepper.motionComplete()){
     stepper.processMovement();
-    if (digitalRead(IndexPin)) { //pin released
-      if (indexSet == 1) {
-        //was pressed but now released
-        stepper.setTargetPositionInSteps(stepper.getCurrentPositionInSteps() + StepsFromLimit);
-        indexSet = 0;
-      }
-    } else { //pin pressed
-      if (indexSet == 0) {
-        //pin now pressed...
-        indexSet = 1;
-      }
-    }
     if (stopMotion) {
       stepper.setTargetPositionToStop();
     }
@@ -433,11 +502,49 @@ void AnimationRoutine(){ //routine to perform animation
   //Start motion
   inMotion = true; //block others till complete
   //code here for animation
-
-
-
-
-
+  animationStopPosition = stepper.getCurrentPositionInSteps();
+  int animationStep = 0;
+  int keepGoing = 1;
+  while(keepGoing){
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+      }
+      buttonCheckRR();
+    }
+    //place all animation positions from last to first...
+    currentPosition = stepper.getCurrentPositionInSteps();
+    if (animationStep == 6) {
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
+      stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
+      keepGoing = 0;
+    }
+    if (animationStep == 5) {
+      stepper.setTargetPositionInSteps(animationStopPosition);
+      animationStep = 6;
+    }
+    if (animationStep == 4) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, -0.028));
+      animationStep = 5;
+    }
+    if (animationStep == 3) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.527));
+      animationStep = 4;
+    }
+    if (animationStep == 2) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, -0.028));
+      animationStep = 3;
+    }
+    if (animationStep == 1) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.555));
+      animationStep = 2;
+    }
+    if (animationStep == 0) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, -0.028));
+      animationStep = 1;
+    }
+  }
   inMotion = false; //release hold
   #endif
 }
