@@ -19,11 +19,11 @@
                 //press self test to increase accel for next run
                 //keep prefered rpm and accel for later
 
-#define test2   //test 2 measures steps from index pin triggers
+//#define test2   //test 2 measures steps from index pin triggers
                 //press b4 pin to spin drum 10 times, speed and accel set in test2 settings
                 //note the info displayed, and use value for test 3
 
-//#define test3  //test 3 uses trigger to find steps from index release to centered position,
+#define test3 //test 3 uses trigger to find steps from index release to centered position,
               //use self test button to move to index using value from test2
               //use trigger to move trigger amount in settings till drum is in appropriate position
               //note steps from index to position for use in final...
@@ -48,7 +48,7 @@
   #define StartAccel 10000.0     //drum start accel for test3 adjust as needed
   #define SlowRpm 10.0           //slow speed for precision
   #define StepsPerTrigger 100.0 //steps to move per trigger press
-  #define StepsBetweenIndexRelease 1000.0 //adjust from results of test2...
+  #define StepsBetweenIndexRelease 1200.0 //adjust from results of test2...
   long stepsFromIndexRelease = 0;
   long currentPosition = 0;
 #endif
@@ -362,26 +362,37 @@ void AnimationRoutine(){ //routine to perform animation
     stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.5));
     int indexSet = 0;
     int keepGoing = 1;
+    long lastIndexPress = 0;
+    long lastIndexRelease = 0;
     while(keepGoing){
     while(!stepper.motionComplete()){
       stepper.processMovement();
+      currentPosition = stepper.getCurrentPositionInSteps();
       if (digitalRead(IndexPin)) { //pin released
         if (indexSet == 1) {
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
           //was pressed but now released
-          stepper.setTargetPositionInSteps(stepper.getCurrentPositionInSteps() + StepsBetweenIndexRelease - 100);
+          stepper.setTargetPositionInSteps(currentPosition + StepsBetweenIndexRelease - 100);
           indexSet = 2; //look for next press
+          lastIndexRelease = currentPosition;
+          }
         }
         if (indexSet == 3) {
-          indexSet = 4;
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+            indexSet = 4;
+            lastIndexRelease = currentPosition;
+          }
         }
       } else { //pin pressed
         if (indexSet == 0) {
           //pin now pressed...
           indexSet = 1;
+          lastIndexPress = currentPosition;
         }
         if (indexSet == 2) {
           //pin now pressed...
           indexSet = 3;
+          lastIndexPress = currentPosition;
         }
         
       }
@@ -467,6 +478,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 10));
   while(!stepper.motionComplete()){
     stepper.processMovement();
+    currentPosition = stepper.getCurrentPositionInSteps();
     // Index pin checking... 1 is released, 0 pressed.
     // if released and was released, do nothing...
     // if pressed and was released, msg position, indexSet = 0
@@ -475,7 +487,6 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
     if (digitalRead(IndexPin)) { //pin released
       if (indexSet == 1) {
         //was pressed but now released
-        currentPosition = stepper.getCurrentPositionInSteps();
         if (currentPosition - lastIndexPress > indexDebounceSteps) {
           long diff = currentPosition - lastIndexPress;
           long diff2 = currentPosition - lastIndexRelease;
@@ -491,7 +502,6 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
     } else { //pin pressed
       if (indexSet == 0) {
         //pin now pressed...
-        currentPosition = stepper.getCurrentPositionInSteps();
         if (currentPosition - lastIndexRelease > indexDebounceSteps) {
           long diff = currentPosition - lastIndexPress;
           long diff2 = currentPosition - lastIndexRelease;
