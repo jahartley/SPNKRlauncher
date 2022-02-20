@@ -322,6 +322,7 @@ void FireRoutine(){ //routine to switch barrels after firing
     long lastIndexPress = 0;
     long lastIndexRelease = 0;
     long minMove = 0;
+    DebugSerial.println("Fire index routine");
     while(keepGoing){
       //DebugSerial.print("KeepGoing indexSet: ");
       //DebugSerial.println(indexSet);
