@@ -60,7 +60,7 @@
 #endif
 
 //Stepper Constants
-#define DrumTeeth 365.0           //number of teeth on drum
+#define DrumTeeth 366.0           //number of teeth on drum
 #define StepperTeeth 60.0         //number of teeth on stepper
 #define MicroStepping 2.0         //microstep setting on stepper driver
 #define Reverse false           //not used yet
