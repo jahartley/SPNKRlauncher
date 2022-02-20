@@ -186,7 +186,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
           //DebugSerial.println("First Index release detected...");
           if (currentPosition - lastIndexPress > indexDebounceSteps) {
           //was pressed but now released
-          DebugSerial.println("First Index release debounce ok");
+          DebugSerial.println("#1 First Index release debounce ok");
           DebugSerial.println(currentPosition);
           minMove = currentPosition + StepsBetweenIndexRelease - 400;
           stepper.setTargetPositionInSteps(minMove);
@@ -197,7 +197,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
         if (indexSet == 3) {
           //DebugSerial.println("2 index release...");
           if (currentPosition - lastIndexPress > indexDebounceSteps) {
-            DebugSerial.println("2 index debounce ok...");
+            DebugSerial.println("#3 index debounce ok...");
             DebugSerial.println(currentPosition);
             indexSet = 4;
             lastIndexRelease = currentPosition;
@@ -206,7 +206,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
       } else { //pin pressed
         if (indexSet == 0) {
           //pin now pressed...
-          DebugSerial.println("First index press detected...");
+          DebugSerial.println("#0 First index press detected...");
           DebugSerial.println(currentPosition);
           indexSet = 1;
           lastIndexPress = currentPosition;
@@ -214,7 +214,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
         if (indexSet == 2) {
           if (currentPosition - minMove > 0)
           //pin now pressed...
-          DebugSerial.println("2 index press detect...");
+          DebugSerial.println("#2 index press detect...");
           DebugSerial.println(currentPosition);
           indexSet = 3;
           lastIndexPress = currentPosition;
@@ -229,7 +229,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
     }
 
     if (indexSet == 5) {
-      DebugSerial.println("index 5 returning to normal speeds");
+      DebugSerial.println("#5 returning to normal speeds");
       DebugSerial.println(currentPosition);
       keepGoing = 0;
       stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
@@ -242,7 +242,7 @@ void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
     }
 
     if (indexSet == 4) { 
-      DebugSerial.println("Index 4... moving StepsFromLimit");
+      DebugSerial.println("#4... moving StepsFromLimit");
       DebugSerial.println(currentPosition);
       stepper.setTargetPositionInSteps(stepper.getCurrentPositionInSteps() + StepsFromLimit);
       indexSet = 5;
