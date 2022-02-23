@@ -316,7 +316,7 @@ void FireRoutine(){ //routine to switch barrels after firing
   inMotion = true; //block others till complete
     currentPosition = stepper.getCurrentPositionInSteps();
     stepper.setTargetPositionInSteps(currentPosition + (HalfTurn * 4));
-    stepper.setSpeedInStepsPerSecond(RpmToSteps(40));
+    stepper.setSpeedInStepsPerSecond(RpmToSteps(60));
     int indexSet = 0;
     int keepGoing = 1;
     long lastIndexPress = 0;
@@ -346,6 +346,7 @@ void FireRoutine(){ //routine to switch barrels after firing
           //pin now pressed...
           DebugSerial.println("#0 First index press detected...");
           DebugSerial.println(currentPosition);
+          stepper.setAccelerationInStepsPerSecondPerSecond(14000);
           indexSet = 1;
           lastIndexPress = currentPosition;
         }
@@ -366,6 +367,7 @@ void FireRoutine(){ //routine to switch barrels after firing
     }
 
     }
+    stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
     DebugSerial.println(currentPosition);
     DebugSerial.println("Show TIME!!");
 
