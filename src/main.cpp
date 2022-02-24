@@ -714,12 +714,13 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
 int DelayPlus(long valu) {
   unsigned long now = millis();
   unsigned long ending = now + valu;
-  while(1) {
+  int dumb = 1;
+  while(dumb) {
     now = millis();
     //DebugSerial.println(now);
     long test = now - ending;
     if (test > 0) {
-      break;
+      dumb = 0;
     }
     buttonCheck();
   }
