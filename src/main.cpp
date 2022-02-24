@@ -61,8 +61,8 @@
   #define FireRpm 63
   #define FireStartAccel 20000
   #define FireStopAccel 25000
-  #define AnimatePause 5000
-  #define AnimateRpm 15
+  #define AnimatePause 200
+  #define AnimateRpm 30
   #define AnimateAccel 20000
 #endif
 
@@ -333,7 +333,7 @@ void AnimationRoutine(){ //routine to perform animation
     DebugSerial.println("Animation Routine #5 failed");
     return;
   }
-  
+
   //#6
   DebugSerial.println("Animation #6");
   DelayPlus(AnimatePause);
@@ -359,6 +359,8 @@ void AnimationRoutine(){ //routine to perform animation
 
 void StopMotion(){ //called when reload pin is released
   stopMotion = true; //Stop motion...
+  stepper.setCurrentPositionInSteps(0);
+  stepper.setTargetPositionInSteps(0);
   stepper.setTargetPositionToStop(); //stop motion...
   DebugSerial.println("LID OPENED STOP IMMEADATLEY>>>");
   inMotion = false; //release hold
