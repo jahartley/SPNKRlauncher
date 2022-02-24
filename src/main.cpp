@@ -61,8 +61,8 @@
   #define FireRpm 63
   #define FireStartAccel 20000
   #define FireStopAccel 25000
-  #define AnimatePause 250
-  #define AnimateRpm 30
+  #define AnimatePause 5000
+  #define AnimateRpm 15
   #define AnimateAccel 20000
 #endif
 
@@ -111,11 +111,12 @@ void FireRoutine();
 void AnimationRoutine();
 void StopMotion();
 constexpr float RpmToSteps(float);
-long TargetPositionRotations(float);
+constexpr long TargetPositionRotations(float);
 int CheckHolds();
 int DelayPlus(long);
 int IndexPlus(long, float, float, float, long);
 int MovePlus(long, float, float, float);
+int MoveExact(long, float, float, float);
 void MeasureStepsBetweenIndexPin();
 
 
@@ -160,6 +161,9 @@ void setup() {  // startup code
 
 void loop() {  //Idle...
   buttonCheck();
+  if(stopMotion) {
+    stepper.processMovement();
+  }
 }
 
 void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
@@ -325,10 +329,7 @@ void AnimationRoutine(){ //routine to perform animation
   DelayPlus(AnimatePause);
   //#5
   DebugSerial.println("Animation #5");
-  DebugSerial.println(stepper.getCurrentPositionInSteps());
-  DebugSerial.println(lastIndexRelease);
-  DebugSerial.println(lastIndexRelease + StepsFromLimit);
-  if (MovePlus((lastIndexRelease + StepsFromLimit), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
+  if (MoveExact((lastIndexRelease + StepsFromLimit), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
     DebugSerial.println("Animation Routine #5 failed");
     return;
   }
@@ -346,7 +347,7 @@ void AnimationRoutine(){ //routine to perform animation
   DelayPlus(AnimatePause);
   //#9
   DebugSerial.println("Animation #9");
-  if (MovePlus((lastIndexRelease + StepsFromLimit), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
+  if (MoveExact((lastIndexRelease + StepsFromLimit), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
     DebugSerial.println("Animation Routine #9 failed");
     return;
   }
@@ -451,9 +452,9 @@ constexpr float RpmToSteps(float rpm) {
   return (rpm/60.0)*StepsPerRotation;
 }
 
-long TargetPositionRotations(float rotations) {
-  currentPosition = stepper.getCurrentPositionInSteps();
-  return currentPosition + (StepsPerRotation * rotations);
+constexpr long TargetPositionRotations(float rotations) {
+  //currentPosition = stepper.getCurrentPositionInSteps();
+  return (StepsPerRotation * rotations);
 }
 
 
@@ -639,6 +640,27 @@ int MovePlus(long dist, float sps, float startA, float stopA) {
   return ret;
 }
 
+int MoveExact(long dist, float sps, float startA, float stopA) {
+  currentPosition = stepper.getCurrentPositionInSteps();
+  stepper.setSpeedInStepsPerSecond(sps);
+  stepper.setAccelerationInStepsPerSecondPerSecond(startA);
+  stepper.setTargetPositionInSteps(dist);
+  int ret = 0;
+  while(!stepper.motionComplete()){
+    stepper.processMovement();
+    if (stepper.getCurrentVelocityInStepsPerSecond() == sps) {
+      stepper.setAccelerationInStepsPerSecondPerSecond(stopA);
+    }
+    if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("Error stopMotion stopping");
+        ret = 1;
+    }
+    buttonCheck();
+  }
+  return ret;
+}
+
 //Move using Index Pin
 //returns 0 if successful, 1 for fail
 int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
@@ -708,7 +730,7 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
   }
   stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
   stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
-  stepper.setCurrentPositionInSteps(0);
+  //stepper.setCurrentPositionInSteps(0);
   return ret; 
 }
 
