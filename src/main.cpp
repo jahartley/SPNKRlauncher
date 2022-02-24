@@ -61,7 +61,7 @@
   #define FireRpm 63
   #define FireStartAccel 20000
   #define FireStopAccel 25000
-  #define AnimatePause 2000
+  #define AnimatePause 250
   #define AnimateRpm 30
   #define AnimateAccel 20000
 #endif
@@ -316,7 +316,7 @@ void AnimationRoutine(){ //routine to perform animation
   DelayPlus(AnimatePause);
   //#3
   DebugSerial.println("Animation #3");
-  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel, 300)) {
+  if (IndexPlus(282, RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel, 300)) {
     DebugSerial.println("Animation Routine #3 IndexPlus failed");
     return;
   }
@@ -325,7 +325,10 @@ void AnimationRoutine(){ //routine to perform animation
   DelayPlus(AnimatePause);
   //#5
   DebugSerial.println("Animation #5");
-  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
+  DebugSerial.println(stepper.getCurrentPositionInSteps());
+  DebugSerial.println(lastIndexRelease);
+  DebugSerial.println(lastIndexRelease + StepsFromLimit);
+  if (MovePlus((lastIndexRelease + StepsFromLimit), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
     DebugSerial.println("Animation Routine #5 failed");
     return;
   }
@@ -334,7 +337,7 @@ void AnimationRoutine(){ //routine to perform animation
   DelayPlus(AnimatePause);
   //#7
   DebugSerial.println("Animation #7");
-  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel, 300)) {
+  if (IndexPlus(282, RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel, 0)) {
     DebugSerial.println("Animation Routine #7 IndexPlus failed");
     return;
   }
@@ -343,7 +346,7 @@ void AnimationRoutine(){ //routine to perform animation
   DelayPlus(AnimatePause);
   //#9
   DebugSerial.println("Animation #9");
-  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
+  if (MovePlus((lastIndexRelease + StepsFromLimit), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
     DebugSerial.println("Animation Routine #9 failed");
     return;
   }
