@@ -60,7 +60,7 @@
   #define IndexStopAccel 6000
   #define FireRpm 60
   #define FireStartAccel 14000
-  #define FireStopAccel 14000
+  #define FireStopAccel 25000
 #endif
 
 //Stepper Constants
@@ -641,6 +641,7 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
   stepper.setSpeedInStepsPerSecond(sps);
   stepper.setAccelerationInStepsPerSecondPerSecond(startA);
   long minDistance = currentPosition + minimum;
+  long startPosition = currentPosition;
   int indexSet = 0;
   int keepGoing = 1;
   long lastIndexPress = 0;
@@ -673,6 +674,8 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
             lastIndexPress = currentPosition;
           } else {
             DebugSerial.println("Index press detected but minimum travel not met...");
+            DebugSerial.print("Distance start to hit: ");
+            DebugSerial.println(currentPosition-startPosition);
           }
         }
       }
