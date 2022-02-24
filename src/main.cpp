@@ -715,7 +715,9 @@ int DelayPlus(long valu) {
   unsigned long now = millis();
   unsigned long ending = now + valu;
   while(true) {
-    if (millis() - ending > 0) {
+    now = millis();
+    DebugSerial.println(now);
+    if (now - ending > 0) {
       break;
     }
     buttonCheck();
