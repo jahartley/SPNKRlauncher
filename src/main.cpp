@@ -333,6 +333,7 @@ void AnimationRoutine(){ //routine to perform animation
     DebugSerial.println("Animation Routine #5 failed");
     return;
   }
+  
   //#6
   DebugSerial.println("Animation #6");
   DelayPlus(AnimatePause);
