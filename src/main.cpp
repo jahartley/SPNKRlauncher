@@ -61,6 +61,9 @@
   #define FireRpm 63
   #define FireStartAccel 20000
   #define FireStopAccel 25000
+  #define AnimatePause 2000
+  #define AnimateRpm 30
+  #define AnimateAccel 20000
 #endif
 
 //Stepper Constants
@@ -110,7 +113,7 @@ void StopMotion();
 constexpr float RpmToSteps(float);
 long TargetPositionRotations(float);
 int CheckHolds();
-int DelayPlus(int);
+int DelayPlus(long);
 int IndexPlus(long, float, float, float, long);
 int MovePlus(long, float, float, float);
 void MeasureStepsBetweenIndexPin();
@@ -304,43 +307,43 @@ void AnimationRoutine(){ //routine to perform animation
 
   DebugSerial.println("Animation #1");
   //#1
-  if (MovePlus(TargetPositionRotations(-0.0625), RpmToSteps(30), 10000, 10000)) {
+  if (MovePlus(TargetPositionRotations(-0.0625), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
     DebugSerial.println("Animation Routine #1 failed");
     return;
   }
   //#2
   DebugSerial.println("Animation #2");
-  DelayPlus(250);
+  DelayPlus(AnimatePause);
   //#3
   DebugSerial.println("Animation #3");
-  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(30), 10000, 10000, 700)) {
+  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel, 300)) {
     DebugSerial.println("Animation Routine #3 IndexPlus failed");
     return;
   }
   //#4
   DebugSerial.println("Animation #4");
-  DelayPlus(250);
+  DelayPlus(AnimatePause);
   //#5
   DebugSerial.println("Animation #5");
-  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(30), 10000, 10000)) {
+  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
     DebugSerial.println("Animation Routine #5 failed");
     return;
   }
   //#6
   DebugSerial.println("Animation #6");
-  DelayPlus(250);
+  DelayPlus(AnimatePause);
   //#7
   DebugSerial.println("Animation #7");
-  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(30), 10000, 10000, 700)) {
+  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel, 300)) {
     DebugSerial.println("Animation Routine #7 IndexPlus failed");
     return;
   }
   //#8
   DebugSerial.println("Animation #8");
-  DelayPlus(250);
+  DelayPlus(AnimatePause);
   //#9
   DebugSerial.println("Animation #9");
-  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(30), 10000, 10000)) {
+  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(AnimateRpm), AnimateAccel, AnimateAccel)) {
     DebugSerial.println("Animation Routine #9 failed");
     return;
   }
@@ -708,9 +711,9 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
 
 //Delay function while still checking buttons
 //returns 0 if successful, 1 for fail
-int DelayPlus(int delay) {
+int DelayPlus(long valu) {
   unsigned long now = millis();
-  unsigned long ending = now + delay;
+  unsigned long ending = now + valu;
   while(true) {
     if (millis() - ending > 0) {
       break;
