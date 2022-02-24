@@ -4,6 +4,7 @@
 */
 
 //Define Settings
+#define DebugStepper            //turn on debug stepper functions, comment out to turn off
 #define WaitForUsbSerial        //Wait for Debug Serial connection on startup, comment to turn off
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -49,32 +50,35 @@
   #define StepsPerTrigger 20.0 //steps to move per trigger press
   #define StepsBetweenIndexRelease 1220.0 //adjust from results of test2...
   long stepsFromIndexRelease = 0;
+  long currentPosition = 0;
 #endif
 
 #ifdef final //final settings
   #define StartRpm 60.0          //drum rpm for final
   #define StartAccel 10000.0      //accel rate for final
+  #define SlowRpm 10.0           //slow speed for precision
   #define StepsFromLimit 127.0      //steps from limit release till line up
+  #define StepsBetweenIndexRelease 1220.0 //adjust from results of test2...
+  #define HalfTurn 1240.0
   #define IndexRpm 40
   #define IndexStartAccel 8000
   #define IndexStopAccel 6000
   #define FireRpm 60
   #define FireStartAccel 14000
   #define FireStopAccel 14000
+  long currentPosition = 0;
+  long animationStopPosition = 0;
 #endif
 
 //Stepper Constants
 #define DrumTeeth 366.0           //number of teeth on drum
 #define StepperTeeth 60.0         //number of teeth on stepper
 #define MicroStepping 2.0         //microstep setting on stepper driver
+#define Reverse false           //not used yet
 #define StepsPerRotation (DrumTeeth/StepperTeeth)*(MicroStepping*200)   //steps per drum rotation calc
 #define MaxStepsPerSecond (StartRpm/60)*StepsPerRotation  //max steps per sec used not in testing
-
-//Index pin Debounce minimum steps from first press
 #define indexDebounceSteps 30
-
-//Button Debounce routine Settings
-#define debounceCount 4 //+1 checks > this number
+#define debounceCount 6 //+1 checks > this number
 
 //Pin Definitions for hookups
 #define LEDPin PC13
@@ -82,24 +86,19 @@
 #define ReloadPin PB7
 #define IndexPin PB8
 #define AnimationPin PB9
-#define DebugActionPin PB4
 #define StepPin PB12
 #define DirectionPin PB13
 
-//Included Librarys
+
 #include <Arduino.h>            //Add arduino functions
 #include <FlexyStepper.h>       //Add Stepper Library
-
-//Select which serial port to use for debug messages
-#define DebugSerial SerialUSB
+#define DebugSerial SerialUSB   //Pick which serial port to use for debug messages
 
 FlexyStepper stepper;           //Create stepper object
 
-//global variables
+//globl variables
 bool stopMotion = false;  //stops motion when carrage open
 bool inMotion = false;    //prevents another function from running while another is in motion
-long lastIndexRelease = 0;
-long currentPosition = 0;
 
 //function declarations required by cpp
 void buttonCheck();
@@ -108,13 +107,14 @@ void FireRoutine();
 void AnimationRoutine();
 void StopMotion();
 constexpr float RpmToSteps(float);
-long TargetPositionRotations(float);
+long TargetPositionRotations(long, float);
 int CheckHolds();
 int DelayPlus(int);
 int IndexPlus(long, float, float, float, long);
 int MovePlus(long, float, float, float);
-void MeasureStepsBetweenIndexPin();
-
+#ifdef DebugStepper
+  void MeasureStepsBetweenIndexPin();
+#endif
 
 void setup() {  // startup code
   DebugSerial.begin(); //activate USB CDC driver
@@ -127,12 +127,12 @@ void setup() {  // startup code
   pinMode(TriggerPin, INPUT_PULLUP);
   pinMode(ReloadPin, INPUT_PULLUP);
   pinMode(AnimationPin, INPUT_PULLUP);
-  pinMode(DebugActionPin, INPUT_PULLUP);
 
   DebugSerial.println(" complete.");
 
   DebugSerial.print("Setup stepper library... ");
   stepper.connectToPins(StepPin, DirectionPin);
+  
   stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
   stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
   stepper.setCurrentPositionInSteps(0);
@@ -155,22 +155,181 @@ void setup() {  // startup code
   DebugSerial.println(StartAccel);
 }
 
-void loop() {  //Idle...
+void loop() {  // put your main code here, to run repeatedly:
   buttonCheck();
+  //stepper.processMovement();
 }
 
 void IndexRoutine(){ //routine to index drum, called when reloadPin is pressed
   stopMotion = false; //allow motion
   DebugSerial.println("LID Closed allow motion");
   #ifdef final
+    //code here for index routine
+    //move drum till index relase, then stop at next release...
     //Check Holds...
-    if (CheckHolds()) return;
-    //Start motion
-    inMotion = true; //block others till complete
-    if (IndexPlus(StepsFromLimit, RpmToSteps(IndexRpm), IndexStartAccel, IndexStopAccel, 0)) {
-      DebugSerial.println("Index Routine IndexPlus failed");
+    if (stopMotion) { //if motion not allowed do nothing
+      DebugSerial.println("Error stopMotion blocking");
+      return;
+    } 
+    if (inMotion) { //if already inMotion cant move...
+      DebugSerial.println("Error already in motion");
       return;
     }
+    //Start motion
+    inMotion = true; //block others till complete
+    currentPosition = stepper.getCurrentPositionInSteps();
+    stepper.setTargetPositionInSteps(currentPosition + (HalfTurn * 4));
+    stepper.setSpeedInStepsPerSecond(RpmToSteps(IndexRpm));
+    stepper.setAccelerationInStepsPerSecondPerSecond(IndexStartAccel);
+    int indexSet = 0;
+    int keepGoing = 1;
+    long lastIndexPress = 0;
+    long lastIndexRelease = 0;
+    long minMove = 0;
+    DebugSerial.println("Fire index routine");
+    while(keepGoing){
+      //DebugSerial.print("KeepGoing indexSet: ");
+      //DebugSerial.println(indexSet);
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      currentPosition = stepper.getCurrentPositionInSteps();
+      if (digitalRead(IndexPin)) { //pin released
+        if (indexSet == 1) {
+          //DebugSerial.println("First Index release detected...");
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+          //was pressed but now released
+          DebugSerial.println("#1 First Index release debounce ok");
+          DebugSerial.println(currentPosition);
+          stepper.setTargetPositionInSteps(currentPosition + StepsFromLimit);
+          indexSet = 5; //look for next press
+          lastIndexRelease = currentPosition;
+          }
+        }
+      } else { //pin pressed
+        if (indexSet == 0) {
+          //pin now pressed...
+          DebugSerial.println("#0 First index press detected...");
+          DebugSerial.println(currentPosition);
+          stepper.setAccelerationInStepsPerSecondPerSecond(IndexStopAccel);
+          indexSet = 1;
+          lastIndexPress = currentPosition;
+        }
+      }
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("Error stopMotion stopping");
+      }
+      buttonCheck();
+    }
+
+    if (indexSet == 5) {
+      DebugSerial.println("#5 returning to normal speeds");
+      DebugSerial.println(currentPosition);
+      keepGoing = 0;
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
+      stepper.setCurrentPositionInSteps(0);
+    }
+
+    }
+    stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
+    DebugSerial.println(currentPosition);
+    DebugSerial.println("Show TIME!!");
+
+
+
+
+    /*
+    currentPosition = stepper.getCurrentPositionInSteps();
+    stepper.setTargetPositionInSteps(currentPosition + (HalfTurn * 4));
+    stepper.setSpeedInStepsPerSecond(RpmToSteps(SlowRpm));
+    int indexSet = 0;
+    int keepGoing = 1;
+    long lastIndexPress = 0;
+    long lastIndexRelease = 0;
+    long minMove = 0;
+    while(keepGoing){
+      //DebugSerial.print("KeepGoing indexSet: ");
+      //DebugSerial.println(indexSet);
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      currentPosition = stepper.getCurrentPositionInSteps();
+      if (digitalRead(IndexPin)) { //pin released
+        if (indexSet == 1) {
+          //DebugSerial.println("First Index release detected...");
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+          //was pressed but now released
+          DebugSerial.println("#1 First Index release debounce ok");
+          DebugSerial.println(currentPosition);
+          minMove = currentPosition + StepsBetweenIndexRelease - 400;
+          stepper.setTargetPositionInSteps(minMove);
+          indexSet = 2; //look for next press
+          lastIndexRelease = currentPosition;
+          }
+        }
+        if (indexSet == 3) {
+          //DebugSerial.println("2 index release...");
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+            DebugSerial.println("#3 index debounce ok...");
+            DebugSerial.println(currentPosition);
+            indexSet = 4;
+            lastIndexRelease = currentPosition;
+          }
+        }
+      } else { //pin pressed
+        if (indexSet == 0) {
+          //pin now pressed...
+          DebugSerial.println("#0 First index press detected...");
+          DebugSerial.println(currentPosition);
+          indexSet = 1;
+          lastIndexPress = currentPosition;
+        }
+        if (indexSet == 2) {
+          if (currentPosition - minMove > 0) {
+            //pin now pressed...
+            DebugSerial.println("#2 index press detect...");
+            DebugSerial.println(currentPosition);
+            indexSet = 3;
+            lastIndexPress = currentPosition;
+          }
+        }
+        
+      }
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("Error stopMotion stopping");
+      }
+      buttonCheck();
+    }
+
+    if (indexSet == 5) {
+      DebugSerial.println("#5 returning to normal speeds");
+      DebugSerial.println(currentPosition);
+      keepGoing = 0;
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
+      stepper.setCurrentPositionInSteps(0);
+    }
+
+    if (indexSet < 4) {
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(SlowRpm));
+      stepper.setTargetPositionInSteps(stepper.getCurrentPositionInSteps() + 10);
+    }
+
+    if (indexSet == 4) { 
+      DebugSerial.println("#4... moving StepsFromLimit");
+      DebugSerial.println(currentPosition);
+      stepper.setTargetPositionInSteps(stepper.getCurrentPositionInSteps() + StepsFromLimit);
+      indexSet = 5;
+    } 
+
+    
+    }
+    DebugSerial.println(currentPosition);
+    DebugSerial.println("Show TIME!!");
+
+
+
+
+    */
     inMotion = false; //release hold
   #endif
 }
@@ -187,17 +346,29 @@ void FireRoutine(){ //routine to switch barrels after firing
   #ifdef test3
     //move drum by StepsPerTrigger amount each click
     //Check Holds...
-    if (CheckHolds()) return;
+    if (stopMotion) { //if motion not allowed do nothing
+      DebugSerial.println("test3 FireRoutine Error stopMotion blocking");
+      return;
+    } 
+    if (inMotion) { //if already inMotion cant move...
+      DebugSerial.println("test3 FireRoutine Error already in motion");
+      return;
+    }
     //Start motion
     inMotion = true; //block others till complete
     currentPosition = stepper.getCurrentPositionInSteps();
+    stepper.setTargetPositionInSteps(currentPosition + StepsPerTrigger);
     DebugSerial.print("Moving from: ");
     DebugSerial.print(currentPosition);
     DebugSerial.print(" to: ");
     DebugSerial.println(currentPosition + StepsPerTrigger);
-    if (MovePlus(StepsPerTrigger, RpmToSteps(StartRpm), StartAccel, StartAccel)) {
-      DebugSerial.println("Fire Routine MovePlus failed");
-      return;
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("stopped by stop motion");
+      }
+      buttonCheck();
     }
     DebugSerial.println("Done...");
     currentPosition = stepper.getCurrentPositionInSteps();
@@ -217,6 +388,84 @@ void FireRoutine(){ //routine to switch barrels after firing
     DebugSerial.println("Fire Routine IndexPlus failed");
     return;
   }
+
+
+    currentPosition = stepper.getCurrentPositionInSteps();
+    stepper.setTargetPositionInSteps(currentPosition + (HalfTurn * 4));
+    stepper.setSpeedInStepsPerSecond(RpmToSteps(FireRpm));
+    stepper.setAccelerationInStepsPerSecondPerSecond(FireStartAccel);
+    int indexSet = 0;
+    int keepGoing = 1;
+    long lastIndexPress = 0;
+    long lastIndexRelease = 0;
+    long minMove = 0;
+    DebugSerial.println("Fire index routine");
+    while(keepGoing){
+      //DebugSerial.print("KeepGoing indexSet: ");
+      //DebugSerial.println(indexSet);
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      currentPosition = stepper.getCurrentPositionInSteps();
+      if (digitalRead(IndexPin)) { //pin released
+        if (indexSet == 1) {
+          //DebugSerial.println("First Index release detected...");
+          if (currentPosition - lastIndexPress > indexDebounceSteps) {
+          //was pressed but now released
+          DebugSerial.println("#1 First Index release debounce ok");
+          DebugSerial.println(currentPosition);
+          stepper.setTargetPositionInSteps(currentPosition + StepsFromLimit);
+          indexSet = 5; //look for next press
+          lastIndexRelease = currentPosition;
+          }
+        }
+      } else { //pin pressed
+        if (indexSet == 0) {
+          //pin now pressed...
+          DebugSerial.println("#0 First index press detected...");
+          DebugSerial.println(currentPosition);
+          stepper.setAccelerationInStepsPerSecondPerSecond(FireStopAccel);
+          indexSet = 1;
+          lastIndexPress = currentPosition;
+        }
+      }
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+        DebugSerial.println("Error stopMotion stopping");
+      }
+      buttonCheck();
+    }
+
+    if (indexSet == 5) {
+      DebugSerial.println("#5 returning to normal speeds");
+      DebugSerial.println(currentPosition);
+      keepGoing = 0;
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
+      stepper.setCurrentPositionInSteps(0);
+    }
+
+    }
+    stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
+    DebugSerial.println(currentPosition);
+    DebugSerial.println("Show TIME!!");
+
+
+
+
+
+
+
+
+
+  /*
+  currentPosition = stepper.getCurrentPositionInSteps();
+  stepper.setTargetPositionInSteps(currentPosition + HalfTurn);
+  while(!stepper.motionComplete()){
+    stepper.processMovement();
+    if (stopMotion) {
+      stepper.setTargetPositionToStop();
+    }
+    buttonCheck();
+  }*/
   inMotion = false; //release hold
   #endif
 }
@@ -232,10 +481,18 @@ void AnimationRoutine(){ //routine to perform animation
   #ifdef test3
     //move drum till index relase, then stop at next release...
     //Check Holds...
-    if (CheckHolds()) return;
+    if (stopMotion) { //if motion not allowed do nothing
+      DebugSerial.println("test3 animate Error stopMotion blocking");
+      return;
+    } 
+    if (inMotion) { //if already inMotion cant move...
+      DebugSerial.println("test3 animate Error already in motion");
+      return;
+    }
     //Start motion
     inMotion = true; //block others till complete
-    stepper.setTargetPositionInSteps(TargetPositionRotations(1.0));
+    currentPosition = stepper.getCurrentPositionInSteps();
+    stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 1.0));
     int indexSet = 0;
     int keepGoing = 1;
     long lastIndexPress = 0;
@@ -297,69 +554,85 @@ void AnimationRoutine(){ //routine to perform animation
 
   #ifdef final
   //Check Holds...
-  if (CheckHolds()) return;
+  if (stopMotion) { //if motion not allowed do nothing
+    DebugSerial.println("AnimationRoutine Error stopMotion blocking");
+    return;
+  } 
+  if (inMotion) { //if already inMotion cant move...
+    DebugSerial.println("AnimationRoutine Error already in motion");
+    return;
+  }
+  
   //Start motion
   inMotion = true; //block others till complete
   //code here for animation
-
-  DebugSerial.println("Animation #1");
-  //#1
-  if (MovePlus(TargetPositionRotations(-0.0625), RpmToSteps(30), 10000, 10000)) {
-    DebugSerial.println("Animation Routine #1 failed");
-    return;
+  animationStopPosition = stepper.getCurrentPositionInSteps();
+  int animationStep = 0;
+  int keepGoing = 1;
+  stepper.setSpeedInStepsPerSecond(RpmToSteps(20));
+  stepper.setAccelerationInStepsPerSecondPerSecond(2000);
+  while(keepGoing){
+    while(!stepper.motionComplete()){
+      stepper.processMovement();
+      if (stopMotion) {
+        stepper.setTargetPositionToStop();
+      }
+      buttonCheck();
+    }
+    //place all animation positions from last to first...
+    currentPosition = stepper.getCurrentPositionInSteps();
+    if (animationStep == 6) {
+      stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
+      stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
+      keepGoing = 0;
+    }
+    if (animationStep == 5) {
+      stepper.setTargetPositionInSteps(animationStopPosition);
+      animationStep = 6;
+    }
+    if (animationStep == 4) {
+      stepper.setTargetPositionInSteps(animationStopPosition + HalfTurn + HalfTurn);
+      animationStep = 6;
+    }
+    if (animationStep == 3) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.6));
+      animationStep = 4;
+    }
+    if (animationStep == 2) {
+      stepper.setTargetPositionInSteps(animationStopPosition + HalfTurn);
+      animationStep = 3;
+    }
+    if (animationStep == 1) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 0.6));
+      animationStep = 2;
+    }
+    if (animationStep == 0) {
+      stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, -0.028));
+      animationStep = 1;
+    }
   }
-  //#2
-  DebugSerial.println("Animation #2");
-  DelayPlus(250);
-  //#3
-  DebugSerial.println("Animation #3");
-  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(30), 10000, 10000, 700)) {
-    DebugSerial.println("Animation Routine #3 IndexPlus failed");
-    return;
-  }
-  //#4
-  DebugSerial.println("Animation #4");
-  DelayPlus(250);
-  //#5
-  DebugSerial.println("Animation #5");
-  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(30), 10000, 10000)) {
-    DebugSerial.println("Animation Routine #5 failed");
-    return;
-  }
-  //#6
-  DebugSerial.println("Animation #6");
-  DelayPlus(250);
-  //#7
-  DebugSerial.println("Animation #7");
-  if (IndexPlus(TargetPositionRotations(0.0625), RpmToSteps(30), 10000, 10000, 700)) {
-    DebugSerial.println("Animation Routine #7 IndexPlus failed");
-    return;
-  }
-  //#8
-  DebugSerial.println("Animation #8");
-  DelayPlus(250);
-  //#9
-  DebugSerial.println("Animation #9");
-  if (MovePlus(lastIndexRelease + StepsFromLimit, RpmToSteps(30), 10000, 10000)) {
-    DebugSerial.println("Animation Routine #9 failed");
-    return;
-  }
-  DebugSerial.println("Animation Complete");
   inMotion = false; //release hold
   #endif
 }
 
 void StopMotion(){ //called when reload pin is released
-  stopMotion = true; //Stop motion...
-  stepper.setTargetPositionToStop(); //stop motion...
+  //stopMotion = true; //Stop motion...
+  //stepper.setTargetPositionToStop(); //stop motion...
   DebugSerial.println("LID OPENED STOP IMMEADATLEY>>>");
-  inMotion = false; //release hold
 }
 
+#ifdef DebugStepper
 
 void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index hits via serial output
   //Check Holds...
-  if (CheckHolds()) return;
+  if (stopMotion) { //if motion not allowed do nothing
+    DebugSerial.println("MeasureStepsBetween Error stopMotion blocking");
+    return;
+  } 
+  if (inMotion) { //if already inMotion cant move...
+    DebugSerial.println("MeasureStepsBetween Error already in motion");
+    return;
+  }
 
   #ifdef test2 //test2 code
   //Variables...
@@ -375,7 +648,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   inMotion = true; //block others till complete
   //check index pin and DebugFireCircuit pin for measurements
   stepper.setCurrentPositionInSteps(currentPosition);
-  stepper.setTargetPositionInSteps(TargetPositionRotations(10));
+  stepper.setTargetPositionInSteps(TargetPositionRotations(currentPosition, 10));
   while(!stepper.motionComplete()){
     stepper.processMovement();
     currentPosition = stepper.getCurrentPositionInSteps();
@@ -427,54 +700,57 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   inMotion = true; //block others till complete
   //rotate drum 2 rotations and stop...
   DebugSerial.println("Rotate 2 times then stop with current accel and rpm");
+  long currentPos = stepper.getCurrentPositionInSteps();
   DebugSerial.print("Current Accel value: ");
   DebugSerial.println(currentAccel);
   DebugSerial.print("Current RPM value: ");
   DebugSerial.println(currentRpm);
-  if (MovePlus(TargetPositionRotations(2), RpmToSteps(currentRpm), currentAccel, currentAccel)) {
-    DebugSerial.println("MeasureSteps MovePlus failed");
-    return;
+  stepper.setAccelerationInStepsPerSecondPerSecond(currentAccel);
+  stepper.setSpeedInStepsPerSecond(RpmToSteps(currentRpm));
+  stepper.setTargetPositionInSteps(TargetPositionRotations(currentPos, 2));
+  DebugSerial.println("Starting movement");
+  while(!stepper.motionComplete()){
+    stepper.processMovement();
+    if (stopMotion) {
+      stepper.setTargetPositionToStop();
+      DebugSerial.println("Motion stopped by stop motion...");
+    }
+    buttonCheck();
   }
   #endif
   DebugSerial.println("Movement complete");
   inMotion = false; //release hold
 }
-
+#endif
 
 constexpr float RpmToSteps(float rpm) {
   return (rpm/60.0)*StepsPerRotation;
 }
 
-long TargetPositionRotations(float rotations) {
-  currentPosition = stepper.getCurrentPositionInSteps();
+long TargetPositionRotations(long currentPosition, float rotations) {
   return currentPosition + (StepsPerRotation * rotations);
 }
 
 
-//4 buttons round robin 40ms debounce
-//check each 5 times on a 2ms interval rr through the 4 buttons
+//3 buttons round robin 42ms debounce
+//check each 7 times on a 2ms interval rr through the 3 buttons
 //need state, counter, rotation counter
-
-//Global Variables for Button Debounce
 int b1counter = 0;
 int b2counter = 0;
 int b3counter = 0;
-int b4counter = 0;
 int b1state = 1;
 int b2state = 1;
 int b3state = 1;
-int b4state = 1;
 int b1flag = 0;
 int b2flag = 0;
 int b3flag = 0;
-int b4flag = 0;
 
 int rrCounter = 0;
 
 unsigned long lastTime = 0;
 unsigned long now = 0;
 
-//Button Debounce Routine
+
 void buttonCheck() {
   now = millis();
   if (now - lastTime < 2) return; // stop if less than 2ms gone by
@@ -543,28 +819,6 @@ void buttonCheck() {
           b3flag = 2;
         }
       }
-      rrCounter++;
-    break;
-
-    case 3:
-      /* code */
-      if (digitalRead(DebugActionPin)) {
-        if (b4state == 0) b4counter++;
-        if (b4state == 1) b4counter = 0;
-        if (b4counter > debounceCount) {
-          b4counter = 0;
-          b4state = 1;
-          b4flag = 1;
-        }
-      } else {
-        if (b4state == 1) b4counter++;
-        if (b4state == 0) b4counter = 0;
-        if (b4counter > debounceCount) {
-          b4counter = 0;
-          b4state = 0;
-          b4flag = 2;
-        }
-      }
       rrCounter = 0;
     break;
   }
@@ -598,20 +852,9 @@ void buttonCheck() {
     b3flag = 0;
     DebugSerial.println("Animate Pressed");
   }
-    if (b4flag == 1) {
-    b4flag = 0;
-    DebugSerial.println("Debug Released");
-    MeasureStepsBetweenIndexPin();
-  }
-  if (b4flag == 2) {
-    b4flag = 0;
-    DebugSerial.println("Debug Pressed");
-  }
 
 }
 
-//Move ignoring Index pin
-//returns 0 if successful, 1 for fail
 int MovePlus(long dist, float sps, float startA, float stopA) {
   currentPosition = stepper.getCurrentPositionInSteps();
   stepper.setSpeedInStepsPerSecond(sps);
@@ -633,11 +876,9 @@ int MovePlus(long dist, float sps, float startA, float stopA) {
   return ret;
 }
 
-//Move using Index Pin
-//returns 0 if successful, 1 for fail
 int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
   currentPosition = stepper.getCurrentPositionInSteps();
-  stepper.setTargetPositionInSteps(currentPosition + (StepsPerRotation * 2));
+  stepper.setTargetPositionInSteps(currentPosition + (HalfTurn * 4));
   stepper.setSpeedInStepsPerSecond(sps);
   stepper.setAccelerationInStepsPerSecondPerSecond(startA);
   long minDistance = currentPosition + minimum;
@@ -657,7 +898,6 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
           //was pressed but now released
           DebugSerial.println("#1 First Index release debounce ok");
           //DebugSerial.println(currentPosition);
-          lastIndexRelease = currentPosition;
           stepper.setTargetPositionInSteps(currentPosition + extra);
           indexSet = 3; //end routine
           }
@@ -703,8 +943,6 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
   return ret; 
 }
 
-//Delay function while still checking buttons
-//returns 0 if successful, 1 for fail
 int DelayPlus(int delay) {
   unsigned long now = millis();
   unsigned long ending = now + delay;
@@ -730,5 +968,3 @@ int CheckHolds(){ //returns 1 if holds, 0 if none
   }
   return holds;
 }
-
-//The END!
