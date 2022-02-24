@@ -280,8 +280,13 @@ void AnimationRoutine(){ //routine to perform animation
         
       }
       if (stopMotion) {
-        stepper.setTargetPositionToStop();
         DebugSerial.println("test3 animate Error stopMotion stopping");
+        stepper.setCurrentPositionInSteps(0);
+        stepper.setTargetPositionInSteps(0);
+        DebugSerial.println("Error stopMotion stopping");
+        ret = 1;
+        keepGoing = 0;
+        break;
       }
       buttonCheck();
     }
@@ -361,7 +366,7 @@ void StopMotion(){ //called when reload pin is released
   stopMotion = true; //Stop motion...
   stepper.setCurrentPositionInSteps(0);
   stepper.setTargetPositionInSteps(0);
-  stepper.setTargetPositionToStop(); //stop motion...
+  //stepper.setTargetPositionToStop(); //stop motion...
   DebugSerial.println("LID OPENED STOP IMMEADATLEY>>>");
   inMotion = false; //release hold
 }
@@ -634,9 +639,11 @@ int MovePlus(long dist, float sps, float startA, float stopA) {
       stepper.setAccelerationInStepsPerSecondPerSecond(stopA);
     }
     if (stopMotion) {
-        stepper.setTargetPositionToStop();
+        stepper.setCurrentPositionInSteps(0);
+        stepper.setTargetPositionInSteps(0);
         DebugSerial.println("Error stopMotion stopping");
         ret = 1;
+        break;
     }
     buttonCheck();
   }
@@ -655,9 +662,11 @@ int MoveExact(long dist, float sps, float startA, float stopA) {
       stepper.setAccelerationInStepsPerSecondPerSecond(stopA);
     }
     if (stopMotion) {
-        stepper.setTargetPositionToStop();
+        stepper.setCurrentPositionInSteps(0);
+        stepper.setTargetPositionInSteps(0);
         DebugSerial.println("Error stopMotion stopping");
         ret = 1;
+        break;
     }
     buttonCheck();
   }
@@ -711,9 +720,13 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
         }
       }
       if (stopMotion) {
-        stepper.setTargetPositionToStop();
         DebugSerial.println("Error stopMotion stopping");
+        stepper.setCurrentPositionInSteps(0);
+        stepper.setTargetPositionInSteps(0);
+        keepGoing = 0;
         ret = 1;
+        break;
+
       }
       buttonCheck();
     } //end proccess movement
