@@ -628,11 +628,13 @@ void buttonCheck() {
 //Move ignoring Index pin
 //returns 0 if successful, 1 for fail
 int MovePlus(long dist, float sps, float startA, float stopA) {
+  DebugSerial.println("MovePlus Routine");
   currentPosition = stepper.getCurrentPositionInSteps();
   stepper.setSpeedInStepsPerSecond(sps);
   stepper.setAccelerationInStepsPerSecondPerSecond(startA);
   stepper.setTargetPositionInSteps(currentPosition + dist);
   int ret = 0;
+  unsigned long startedNow = millis();
   while(!stepper.motionComplete()){
     stepper.processMovement();
     if (stepper.getCurrentVelocityInStepsPerSecond() == sps) {
@@ -647,15 +649,19 @@ int MovePlus(long dist, float sps, float startA, float stopA) {
     }
     buttonCheck();
   }
+  DebugSerial.print(millis() - startedNow);
+  DebugSerial.println(" ms long");
   return ret;
 }
 
 int MoveExact(long dist, float sps, float startA, float stopA) {
+  DebugSerial.println("MoveExact Routine");
   currentPosition = stepper.getCurrentPositionInSteps();
   stepper.setSpeedInStepsPerSecond(sps);
   stepper.setAccelerationInStepsPerSecondPerSecond(startA);
   stepper.setTargetPositionInSteps(dist);
   int ret = 0;
+  unsigned long startedNow = millis();
   while(!stepper.motionComplete()){
     stepper.processMovement();
     if (stepper.getCurrentVelocityInStepsPerSecond() == sps) {
@@ -670,6 +676,8 @@ int MoveExact(long dist, float sps, float startA, float stopA) {
     }
     buttonCheck();
   }
+  DebugSerial.print(millis() - startedNow);
+  DebugSerial.println(" ms long");
   return ret;
 }
 
@@ -687,6 +695,7 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
   long lastIndexPress = 0;
   int ret = 0;
   DebugSerial.println("IndexPlus routine");
+  unsigned long startedNow = millis();
   while(keepGoing){
     while(!stepper.motionComplete()){
       stepper.processMovement();
@@ -747,12 +756,15 @@ int IndexPlus(long extra, float sps, float startA, float stopA, long minimum) {
   stepper.setSpeedInStepsPerSecond(RpmToSteps(StartRpm));
   stepper.setAccelerationInStepsPerSecondPerSecond(StartAccel);
   //stepper.setCurrentPositionInSteps(0);
+  DebugSerial.print(millis() - startedNow);
+  DebugSerial.println(" ms long");
   return ret; 
 }
 
 //Delay function while still checking buttons
 //returns 0 if successful, 1 for fail
 int DelayPlus(long valu) {
+  DebugSerial.println("Delay Plus routine");
   unsigned long now = millis();
   unsigned long ending = now + valu;
   int dumb = 1;
@@ -765,6 +777,8 @@ int DelayPlus(long valu) {
     }
     buttonCheck();
   }
+  DebugSerial.print(valu);
+  DebugSerial.println(" ms long");
   return 0;
 }
 
