@@ -416,7 +416,8 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   while(!stepper.motionComplete()){
     stepper.processMovement();
     time = millis();
-    if (time - nextNote > 0) {
+    unsigned long test = time - nextNote;
+    if (test > 0) {
       if (noteCounter >= notesTotal) {
         stepper.setCurrentPositionInSteps(0);
         stepper.setTargetPositionInSteps(0);
