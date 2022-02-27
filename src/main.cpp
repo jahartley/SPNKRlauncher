@@ -413,10 +413,20 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   stepper.setTargetPositionInSteps(2000000);
   stepper.setSpeedInStepsPerSecond(notes[noteCounter]);
   stepper.setAccelerationInStepsPerSecondPerSecond(10000);
+  sPrintV("Time: ");
+  sPrintV(time);
+  sPrintV(" nextNote: ");
+  sPrintlnV(nextNote);
   while(!stepper.motionComplete()){
     stepper.processMovement();
     time = millis();
     unsigned long test = time - nextNote;
+    sPrintV("Time: ");
+    sPrintV(time);
+    sPrintV(" nextNote: ");
+    sPrintV(nextNote);
+    sPrintV(" test: ");
+    sPrintlnV(test);  
     if (test > 0) {
       if (noteCounter >= notesTotal) {
         stepper.setCurrentPositionInSteps(0);
