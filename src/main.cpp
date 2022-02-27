@@ -62,7 +62,7 @@
   #define StepsFromLimit 127.0      //steps from limit release till line up
   #define IndexRpm 40
   #define IndexStartAccel 8000
-  #define IndexStopAccel 6000
+  #define IndexStopAccel 10000
   #define FireRpm 63
   #define FireStartAccel 20000
   #define FireStopAccel 25000
