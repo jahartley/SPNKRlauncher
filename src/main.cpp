@@ -439,9 +439,9 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
           stepper.setTargetPositionInSteps(2000000);
           stepper.setSpeedInStepsPerSecond(notes[noteCounter]);
         }
-        
       }
     }
+    
     if (stopMotion) {
         stepper.setCurrentPositionInSteps(0);
         stepper.setTargetPositionInSteps(0);
