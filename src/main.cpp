@@ -455,7 +455,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
         } else { //normal note, or restarting from stopped note...
           stepper.setCurrentPositionInSteps(0);
           stepper.setTargetPositionInSteps(2000000);
-          stepper.setSpeedInStepsPerSecond(notes[noteCounter]);
+          stepper.setSpeedInStepsPerSecond((notes[noteCounter])*2);
         }
       }
     }
