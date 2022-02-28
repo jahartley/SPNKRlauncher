@@ -89,7 +89,7 @@
                               1400, 200,     200,     166, 1400, 200,     200,
                                    166, 1433, 200,     200,     166, 466, 166,
                               333,     133, 166, 133};
-  const int notesTotal = 72;
+  const int notesTotal = 29;
 #endif
 
 //Stepper Constants
@@ -468,6 +468,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
     }
     buttonCheck();
   }
+  DelayPlus(1000);
   if (IndexPlus(StepsFromLimit, RpmToSteps(FireRpm), FireStartAccel, FireStopAccel, 0)) {
     sPrintlnV("Fire Routine IndexPlus failed");
     return;
