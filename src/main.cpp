@@ -70,7 +70,7 @@
   #define AnimateRpm 30
   #define AnimateAccel 20000
   const float notes[] = {261.6, 329.63,392.0,329.63,261.6,65.406};
-  const long notesLength[] = {500,500,500,500,500,3000};
+  const long notesLength[] = {2000,2000,2000,2000,2000,5000};
   const int notesTotal = 5;
 #endif
 
@@ -406,43 +406,41 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   #ifdef final //final code, play song...
   //Start motion
   inMotion = true; //block others till complete
-  unsigned long time = millis();
-  unsigned long nextNote = time + notesLength[0];
-  int noteCounter = 0;
-  stepper.setCurrentPositionInSteps(0);
-  stepper.setTargetPositionInSteps(2000000);
-  stepper.setSpeedInStepsPerSecond(notes[noteCounter]);
-  stepper.setAccelerationInStepsPerSecondPerSecond(10000);
-  sPrintV("Time: ");
-  sPrintV(time);
-  sPrintV(" nextNote: ");
-  sPrintlnV(nextNote);
+  unsigned long previousMillis = millis();  //timer storage
+  unsigned long currentMillis = millis();  //timer storage
+  int noteCounter = 0; //current note
+  int stateCounter = 0; // current state (seperate from noteCounter to avoid array overflow)
+  stepper.setCurrentPositionInSteps(0); //start up
+  stepper.setTargetPositionInSteps(2000000); //a long way from here...
+  stepper.setSpeedInStepsPerSecond(notes[noteCounter]); //first note...
+  stepper.setAccelerationInStepsPerSecondPerSecond(10000); //music accel...
   while(!stepper.motionComplete()){
     stepper.processMovement();
-    time = millis();
-    unsigned long test = time - nextNote;
-    sPrintV("Time: ");
-    sPrintV(time);
-    sPrintV(" nextNote: ");
-    sPrintV(nextNote);
-    sPrintV(" test: ");
-    sPrintlnV(test);  
-    if (test > 0) {
-      if (noteCounter >= notesTotal) {
+    currentMillis = millis(); //set current time
+    if ((currentMillis - previousMillis) >= notesLength[noteCounter]) { //if note length is past, update...
+      previousMillis = currentMillis; //update previous time
+      stateCounter++; // increment stateCounter
+      if (stateCounter > notesTotal) { //past last note, stop machine...
         stepper.setCurrentPositionInSteps(0);
         stepper.setTargetPositionInSteps(0);
-      } else {
-        noteCounter++;
+      } else { //setup next note
+        noteCounter = stateCounter; //update current note
         sPrintV("Note # ");
         sPrintV(noteCounter);
         sPrintV(" freq: ");
         sPrintV(notes[noteCounter]);
         sPrintV(" length: ");
         sPrintlnV(notesLength[noteCounter]);
-        stepper.setSpeedInStepsPerSecond(notes[noteCounter]);
-        nextNote = time + notesLength[noteCounter];
+        if (notes[noteCounter] < 1.0) { //if the freq is less than 1hz, stop motor
+          stepper.setCurrentPositionInSteps(0);
+          stepper.setTargetPositionInSteps(0);
+        } else { //normal note, or restarting from stopped note...
+          stepper.setCurrentPositionInSteps(0);
+          stepper.setTargetPositionInSteps(2000000);
+          stepper.setSpeedInStepsPerSecond(notes[noteCounter]);
+        }
+        
       }
-      
     }
     if (stopMotion) {
         stepper.setCurrentPositionInSteps(0);
@@ -450,7 +448,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
         sPrintlnI("Error stopMotion stopping");
         break;
     }
-    //buttonCheck();
+    buttonCheck();
   }
   inMotion = false; //release hold
   #endif
