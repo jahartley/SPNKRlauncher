@@ -89,7 +89,7 @@
                               1400, 200,     200,     166, 1400, 200,     200,
                                    166, 1433, 200,     200,     166, 466, 166,
                               333,     133, 166, 133};
-  const int notesTotal = 94;
+  const int notesTotal = 72;
 #endif
 
 //Stepper Constants
@@ -431,7 +431,7 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
   stepper.setCurrentPositionInSteps(0); //start up
   stepper.setTargetPositionInSteps(2000000); //a long way from here...
   stepper.setSpeedInStepsPerSecond(notes[noteCounter]); //first note...
-  stepper.setAccelerationInStepsPerSecondPerSecond(10000); //music accel...
+  stepper.setAccelerationInStepsPerSecondPerSecond(5000); //music accel...
   while(!stepper.motionComplete()){
     stepper.processMovement();
     currentMillis = millis(); //set current time
@@ -467,6 +467,10 @@ void MeasureStepsBetweenIndexPin(){ //debug routine to show steps between index 
         break;
     }
     buttonCheck();
+  }
+  if (IndexPlus(StepsFromLimit, RpmToSteps(FireRpm), FireStartAccel, FireStopAccel, 0)) {
+    sPrintlnV("Fire Routine IndexPlus failed");
+    return;
   }
   inMotion = false; //release hold
   #endif
